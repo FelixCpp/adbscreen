@@ -1,0 +1,45 @@
+name: ADBScreen
+options:
+  bundleIdPrefix: com.felixbusch
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  MACOSX_DEPLOYMENT_TARGET: "14.0"
+targets:
+  ADBScreen:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/ADBScreen
+        excludes:
+          - "Info.plist"
+          - "Resources/**"
+      - path: Sources/ADBScreen/Resources/scrcpy-server
+        buildPhase: resources
+      - path: Sources/ADBScreen/Resources/adbscreen-airplay-helper
+        buildPhase: resources
+      - path: Sources/ADBScreen/Resources/Assets.xcassets
+        buildPhase: resources
+    info:
+      path: Sources/ADBScreen/Info.plist
+      properties:
+        NSLocalNetworkUsageDescription: "ADBScreen wird zu einem AirPlay-Empfänger, damit dein iPhone/iPad den Bildschirm über das lokale Netzwerk spiegeln kann."
+        NSBonjourServices:
+          - "_airplay._tcp"
+          - "_raop._tcp"
+        LSApplicationCategoryType: public.app-category.developer-tools
+        NSHighResolutionCapable: true
+        CFBundleDisplayName: ADBScreen
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.felixbusch.adbscreen
+        SWIFT_VERSION: "5.0"
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGNING_ALLOWED: YES
+        ENABLE_HARDENED_RUNTIME: NO
+        ENABLE_APP_SANDBOX: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
