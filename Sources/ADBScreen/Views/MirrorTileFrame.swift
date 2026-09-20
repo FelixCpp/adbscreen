@@ -27,6 +27,10 @@ struct MirrorTileFrame<Content: View>: View {
     /// Bump this (e.g. a counter) each time a screenshot is captured to
     /// trigger a brief camera-flash overlay.
     var screenshotTrigger: Int = 0
+    /// Shows this one device fullscreen in the grid (every other connection
+    /// keeps running in the background) without disconnecting anything.
+    var isFocused: Bool = false
+    var onToggleFocus: (() -> Void)? = nil
     var onTitleBarDragChanged: ((CGPoint, CGSize) -> Void)? = nil
     var onTitleBarDragEnded: (() -> Void)? = nil
     let onDisconnect: () -> Void
@@ -78,6 +82,13 @@ struct MirrorTileFrame<Content: View>: View {
                 }
                 if isConnected, onToggleShowTouches != nil || onToggleStayAwake != nil || onToggleScreenPower != nil {
                     extrasMenu
+                }
+                if isConnected, let onToggleFocus {
+                    titleBarButton(
+                        systemName: isFocused ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right",
+                        help: isFocused ? "Vollbild verlassen" : "Vollbild anzeigen",
+                        action: onToggleFocus
+                    )
                 }
                 titleBarButton(systemName: "xmark", help: "Trennen", action: onDisconnect)
             }

@@ -7,6 +7,9 @@ struct MirrorTile: View {
     var onTitleBarDragChanged: ((CGPoint, CGSize) -> Void)?
     var onTitleBarDragEnded: (() -> Void)?
 
+    private var isFocused: Bool { appState.focusedSelection == selection }
+    private func toggleFocus() { appState.toggleFocus(selection) }
+
     var body: some View {
         switch selection {
         case .android(let serial):
@@ -15,6 +18,8 @@ struct MirrorTile: View {
                     serial: serial,
                     session: session,
                     appState: appState,
+                    isFocused: isFocused,
+                    onToggleFocus: toggleFocus,
                     onTitleBarDragChanged: onTitleBarDragChanged,
                     onTitleBarDragEnded: onTitleBarDragEnded
                 )
@@ -24,6 +29,8 @@ struct MirrorTile: View {
                 SimulatedMirrorTile(
                     device: device,
                     appState: appState,
+                    isFocused: isFocused,
+                    onToggleFocus: toggleFocus,
                     onTitleBarDragChanged: onTitleBarDragChanged,
                     onTitleBarDragEnded: onTitleBarDragEnded
                 )
@@ -33,6 +40,8 @@ struct MirrorTile: View {
                 AirPlayMirrorTile(
                     session: session,
                     appState: appState,
+                    isFocused: isFocused,
+                    onToggleFocus: toggleFocus,
                     onTitleBarDragChanged: onTitleBarDragChanged,
                     onTitleBarDragEnded: onTitleBarDragEnded
                 )

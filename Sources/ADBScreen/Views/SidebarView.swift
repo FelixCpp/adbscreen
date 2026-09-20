@@ -96,6 +96,14 @@ struct SidebarView: View {
                     }
                     .help("Android-Geräteliste aktualisieren (adb erneut prüfen)")
                 }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        appState.showOnboarding = true
+                    } label: {
+                        Image(systemName: "checklist")
+                    }
+                    .help("Einrichtung / Berechtigungen prüfen")
+                }
             }
         }
     }

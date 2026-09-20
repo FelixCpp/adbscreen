@@ -18,6 +18,26 @@ final class AppState: ObservableObject {
     @Published private(set) var connectedOrder: [DeviceSelection] = []
     @Published var adbAvailable: Bool = ADB.shared.executablePath != nil
 
+    /// The single device currently shown fullscreen in the grid, or `nil`
+    /// when every connected device is shown side by side as usual. This only
+    /// affects what `MirrorGridView` renders — every other connection stays
+    /// alive in the background exactly as before, since sessions live here
+    /// in `AppState` rather than in the tile views.
+    @Published var focusedSelection: DeviceSelection?
+
+    /// Drives the setup checklist sheet. Starts `true` on a machine that has
+    /// never seen it, then flips permanently `false` once dismissed — it's
+    /// still reachable afterwards via the sidebar's toolbar button, which
+    /// just sets this back to `true`.
+    @Published var showOnboarding: Bool = !UserDefaults.standard.bool(forKey: AppState.onboardingShownDefaultsKey) {
+        didSet {
+            if !showOnboarding {
+                UserDefaults.standard.set(true, forKey: Self.onboardingShownDefaultsKey)
+            }
+        }
+    }
+    private static let onboardingShownDefaultsKey = "adbscreen.onboardingShown"
+
     /// Bound to `NavigationSplitView(columnVisibility:)` so the sidebar's
     /// own toolbar items (e.g. the refresh button) can hide themselves once
     /// the sidebar is actually collapsed — that toolbar otherwise stays
@@ -186,6 +206,12 @@ final class AppState: ObservableObject {
         isConnected(selection) ? disconnect(selection) : connect(selection)
     }
 
+    /// Shows `selection` fullscreen in the grid, or (if it's already
+    /// focused) returns to the normal side-by-side layout.
+    func toggleFocus(_ selection: DeviceSelection) {
+        focusedSelection = focusedSelection == selection ? nil : selection
+    }
+
     func connect(_ selection: DeviceSelection) {
         guard !connectedOrder.contains(selection) else { return }
         switch selection {
@@ -226,6 +252,9 @@ final class AppState: ObservableObject {
         connectedOrder.remove(at: index)
         liveConnectionCancellables[selection] = nil
         liveConnected.remove(selection)
+        if focusedSelection == selection {
+            focusedSelection = nil
+        }
         switch selection {
         case .android(let serial):
             scrcpySessions[serial]?.stop()

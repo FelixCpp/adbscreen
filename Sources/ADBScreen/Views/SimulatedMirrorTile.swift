@@ -5,6 +5,8 @@ import SwiftUI
 struct SimulatedMirrorTile: View {
     let device: AndroidDevice
     @ObservedObject var appState: AppState
+    var isFocused: Bool = false
+    var onToggleFocus: (() -> Void)? = nil
     var onTitleBarDragChanged: ((CGPoint, CGSize) -> Void)?
     var onTitleBarDragEnded: (() -> Void)?
 
@@ -35,6 +37,8 @@ struct SimulatedMirrorTile: View {
             isScreenOff: isScreenOff,
             onToggleScreenPower: { isScreenOff.toggle() },
             screenshotTrigger: screenshotTrigger,
+            isFocused: isFocused,
+            onToggleFocus: onToggleFocus,
             onTitleBarDragChanged: onTitleBarDragChanged,
             onTitleBarDragEnded: onTitleBarDragEnded,
             onDisconnect: { appState.disconnect(.simulated(device.serial), forgetIntent: false) }

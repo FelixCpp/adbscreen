@@ -15,7 +15,16 @@ struct MirrorGridView: View {
     @State private var tileFrames: [AppState.DeviceSelection: CGRect] = [:]
 
     var body: some View {
-        let items = appState.connectedOrder
+        // A focused selection replaces the grid with just that one tile
+        // (sized to fill the whole canvas via the existing itemCount == 1
+        // case below) while every other device keeps mirroring in the
+        // background — see `AppState.focusedSelection`.
+        let items: [AppState.DeviceSelection] = {
+            if let focused = appState.focusedSelection, appState.connectedOrder.contains(focused) {
+                return [focused]
+            }
+            return appState.connectedOrder
+        }()
 
         GeometryReader { proxy in
             ZStack {
@@ -81,6 +90,8 @@ struct MirrorGridView: View {
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: items)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .underPageBackgroundColor))
+        // Esc leaves the fullscreen focus view and returns to the grid.
+        .onExitCommand { appState.focusedSelection = nil }
     }
 
     /// One device fills the row, two sit side by side (the "customer demo"

@@ -11,6 +11,8 @@ import SwiftUI
 struct AirPlayMirrorTile: View {
     @ObservedObject var session: AirPlayReceiverSession
     @ObservedObject var appState: AppState
+    var isFocused: Bool = false
+    var onToggleFocus: (() -> Void)? = nil
     var onTitleBarDragChanged: ((CGPoint, CGSize) -> Void)?
     var onTitleBarDragEnded: (() -> Void)?
     @State private var mirrorView: AirPlayDisplayNSView?
@@ -30,6 +32,8 @@ struct AirPlayMirrorTile: View {
             footerNote: "Nur Anzeige – Steuerung ist über AirPlay nicht möglich.",
             onScreenshot: takeScreenshot,
             screenshotTrigger: screenshotTrigger,
+            isFocused: isFocused,
+            onToggleFocus: onToggleFocus,
             onTitleBarDragChanged: onTitleBarDragChanged,
             onTitleBarDragEnded: onTitleBarDragEnded,
             onDisconnect: { appState.disconnect(.airplay) }

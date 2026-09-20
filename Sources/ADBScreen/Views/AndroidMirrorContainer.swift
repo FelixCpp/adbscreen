@@ -8,6 +8,8 @@ struct AndroidMirrorTile: View {
     let serial: String
     @ObservedObject var session: ScrcpySession
     @ObservedObject var appState: AppState
+    var isFocused: Bool = false
+    var onToggleFocus: (() -> Void)? = nil
     var onTitleBarDragChanged: ((CGPoint, CGSize) -> Void)?
     var onTitleBarDragEnded: (() -> Void)?
     @State private var recordingStartDate: Date?
@@ -46,6 +48,8 @@ struct AndroidMirrorTile: View {
             isScreenOff: session.isScreenOff,
             onToggleScreenPower: { session.toggleScreenPower() },
             screenshotTrigger: screenshotTrigger,
+            isFocused: isFocused,
+            onToggleFocus: onToggleFocus,
             onTitleBarDragChanged: onTitleBarDragChanged,
             onTitleBarDragEnded: onTitleBarDragEnded,
             onDisconnect: { appState.disconnect(.android(serial)) }
