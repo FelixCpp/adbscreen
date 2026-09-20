@@ -1,0 +1,4 @@
+[submodule "vendor/uxplay-src"]
+	path = vendor/uxplay-src
+	url = git@github.com:FelixCpp/UxPlay.git
+	branch = adbscreen-custom-renderer
