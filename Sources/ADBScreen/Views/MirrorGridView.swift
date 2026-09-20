@@ -17,42 +17,35 @@ struct MirrorGridView: View {
     var body: some View {
         let items = appState.connectedOrder
 
-        Group {
-            if items.count <= 2 {
-                // A single ForEach keeps each tile's identity stable across
-                // the 0↔1↔2 transitions (same `DeviceSelection` id), so
-                // SwiftUI animates tile resizing/sliding/fading as one
-                // coherent motion instead of swapping the whole layout out
-                // from under it. The empty-state placeholder lives in the
-                // same container (as an overlay) rather than a separate
-                // top-level branch, so going from 0 to 1 devices animates
-                // exactly like the existing 1↔2 case instead of just
-                // popping in.
-                ZStack {
-                    if items.isEmpty {
-                        emptyState
-                            .transition(.opacity)
-                    }
-                    HStack(spacing: 14) {
+        GeometryReader { proxy in
+            ZStack {
+                if items.isEmpty {
+                    emptyState
+                        .transition(.opacity)
+                }
+
+                ScrollView {
+                    // A single LazyVGrid — rather than switching between an
+                    // `HStack` (≤2 tiles) and a `LazyVGrid` (>2 tiles) —
+                    // keeps every tile's identity stable across that
+                    // boundary. Swapping between two different container
+                    // *types* made SwiftUI tear down and rebuild the entire
+                    // previous subtree even though the `ForEach` below keeps
+                    // the same `DeviceSelection` ids: each `MirrorTile` (and
+                    // the live mirroring connection underneath it) got
+                    // destroyed and recreated the moment a 3rd tile made the
+                    // layout wrap into a second row, which reconnected every
+                    // already-connected device. One container type for
+                    // every count avoids that: only the columns and tile
+                    // sizing change, so existing tiles simply reflow.
+                    LazyVGrid(columns: gridColumns(for: items.count), spacing: 14) {
                         ForEach(items, id: \.self) { selection in
-                            reorderableTile(selection)
+                            sizedTile(selection, itemCount: items.count, availableHeight: proxy.size.height)
                                 .transition(.asymmetric(insertion: .scale(scale: 0.9).combined(with: .opacity), removal: .opacity))
                         }
                     }
                     .padding(14)
                 }
-            } else {
-                ScrollView {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 14)], spacing: 14) {
-                        ForEach(items, id: \.self) { selection in
-                            reorderableTile(selection)
-                                .aspectRatio(0.5, contentMode: .fit)
-                                .transition(.scale(scale: 0.92).combined(with: .opacity))
-                        }
-                    }
-                    .padding(14)
-                }
-                .transition(.opacity)
             }
         }
         .coordinateSpace(name: "mirrorGrid")
@@ -60,6 +53,34 @@ struct MirrorGridView: View {
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: items)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .underPageBackgroundColor))
+    }
+
+    /// One device fills the row, two sit side by side (the "customer demo"
+    /// case) — both via flexible columns so tiles keep filling the
+    /// available height like before. Three or more wrap into an adaptive
+    /// grid of aspect-ratio-constrained tiles, same as before.
+    private func gridColumns(for count: Int) -> [GridItem] {
+        count <= 2
+            ? Array(repeating: GridItem(.flexible(), spacing: 14), count: max(count, 1))
+            : [GridItem(.adaptive(minimum: 300), spacing: 14)]
+    }
+
+    /// Applies the per-item-count sizing on top of `reorderableTile`. Split
+    /// out so the `.aspectRatio` modifier can be skipped entirely for ≤2
+    /// tiles rather than called with a `nil` ratio: `.aspectRatio(nil, ...)`
+    /// is not a no-op — it fits the view to *its own* intrinsic aspect
+    /// ratio, which differs per device (or isn't known yet before its video
+    /// starts streaming) and was making the two tiles end up unequal
+    /// widths instead of split evenly.
+    @ViewBuilder
+    private func sizedTile(_ selection: AppState.DeviceSelection, itemCount: Int, availableHeight: CGFloat) -> some View {
+        if itemCount <= 2 {
+            reorderableTile(selection)
+                .frame(height: max(availableHeight - 28, 0))
+        } else {
+            reorderableTile(selection)
+                .aspectRatio(0.5, contentMode: .fit)
+        }
     }
 
     private var emptyState: some View {
@@ -97,19 +118,40 @@ struct MirrorGridView: View {
                 )
             }
         )
-        .offset(draggingSelection == selection ? dragTranslation : .zero)
-        .scaleEffect(draggingSelection == selection ? 1.02 : 1)
-        // LazyVGrid can otherwise keep neighboring cells in their original
-        // drawing order while the dragged cell crosses them. Isolate the
-        // complete tile first, then give the active cell a large enough
-        // z-index to stay above every other grid item.
-        .compositingGroup()
-        .zIndex(draggingSelection == selection ? 1000 : 0)
+        // The tile being dragged gets a white outline + glow so it reads as
+        // "this one is picked up", distinct from the accent-colored outline
+        // on whichever tile it's currently hovering over as a drop target.
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.white, lineWidth: 3)
+                .opacity(draggingSelection == selection ? 1 : 0)
+        )
+        .shadow(
+            color: draggingSelection == selection ? Color.accentColor.opacity(0.6) : .clear,
+            radius: draggingSelection == selection ? 22 : 0
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(Color.accentColor, lineWidth: 3)
                 .opacity(dropTargetSelection == selection ? 1 : 0)
         )
+        // LazyVGrid can otherwise keep neighboring cells in their original
+        // drawing order while the dragged cell crosses them. Isolate the
+        // complete tile (content + highlight border above) first, then give
+        // the active cell a large enough z-index to stay above every other
+        // grid item.
+        .compositingGroup()
+        .zIndex(draggingSelection == selection ? 1000 : 0)
+        // `.scaleEffect()` and `.offset()` only transform where a view is
+        // *painted* — they don't move the layout frame that an
+        // already-attached `.overlay()` aligns itself to. Both have to be
+        // the outermost modifiers here (applied to the already-bordered,
+        // already-shadowed tile as one composited unit) or the highlight
+        // border above ends up a hair too small (sized to the pre-scale
+        // frame) and/or pinned at the pre-drag position while the tile
+        // itself scales/slides out from under it.
+        .scaleEffect(draggingSelection == selection ? 1.02 : 1)
+        .offset(draggingSelection == selection ? dragTranslation : .zero)
         .animation(.spring(response: 0.35, dampingFraction: 0.75), value: dragTranslation)
         .animation(.easeInOut(duration: 0.15), value: draggingSelection)
         .animation(.easeInOut(duration: 0.15), value: dropTargetSelection)
