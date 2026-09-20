@@ -38,9 +38,24 @@ struct MirrorGridView: View {
                     // already-connected device. One container type for
                     // every count avoids that: only the columns and tile
                     // sizing change, so existing tiles simply reflow.
-                    LazyVGrid(columns: gridColumns(for: items.count), spacing: 14) {
+                    //
+                    // Crucially, that also rules out an `if/else` anywhere
+                    // in this per-tile view builder (even just to pick which
+                    // *modifier* to apply): a `@ViewBuilder if/else` is the
+                    // exact same trap — the two branches are different
+                    // concrete types, so SwiftUI tears down and rebuilds
+                    // every tile the moment the active branch flips (e.g.
+                    // disconnecting a device crosses the ≤2/>2 boundary).
+                    // `tileSize(for:available:)` below does all the ≤2-vs->2
+                    // branching in plain Swift on `CGFloat`s instead, so
+                    // every tile always gets the exact same
+                    // `.frame(width:height:)` call — only the numbers differ.
+                    let columns = columnCount(for: items.count)
+                    let size = tileSize(itemCount: items.count, available: proxy.size)
+                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(size.width), spacing: 14), count: columns), spacing: 14) {
                         ForEach(items, id: \.self) { selection in
-                            sizedTile(selection, itemCount: items.count, availableHeight: proxy.size.height)
+                            reorderableTile(selection)
+                                .frame(width: size.width, height: size.height)
                                 .transition(.asymmetric(insertion: .scale(scale: 0.9).combined(with: .opacity), removal: .opacity))
                         }
                     }
@@ -56,31 +71,27 @@ struct MirrorGridView: View {
     }
 
     /// One device fills the row, two sit side by side (the "customer demo"
-    /// case) — both via flexible columns so tiles keep filling the
-    /// available height like before. Three or more wrap into an adaptive
-    /// grid of aspect-ratio-constrained tiles, same as before.
-    private func gridColumns(for count: Int) -> [GridItem] {
-        count <= 2
-            ? Array(repeating: GridItem(.flexible(), spacing: 14), count: max(count, 1))
-            : [GridItem(.adaptive(minimum: 300), spacing: 14)]
+    /// case), three or more wrap into a grid.
+    private func columnCount(for itemCount: Int) -> Int {
+        itemCount <= 2 ? max(itemCount, 1) : max(2, Int(ceil(sqrt(Double(itemCount)))))
     }
 
-    /// Applies the per-item-count sizing on top of `reorderableTile`. Split
-    /// out so the `.aspectRatio` modifier can be skipped entirely for ≤2
-    /// tiles rather than called with a `nil` ratio: `.aspectRatio(nil, ...)`
-    /// is not a no-op — it fits the view to *its own* intrinsic aspect
-    /// ratio, which differs per device (or isn't known yet before its video
-    /// starts streaming) and was making the two tiles end up unequal
-    /// widths instead of split evenly.
-    @ViewBuilder
-    private func sizedTile(_ selection: AppState.DeviceSelection, itemCount: Int, availableHeight: CGFloat) -> some View {
+    /// Every tile's width/height, computed the same way regardless of count
+    /// so the call site never has to branch on it (see the note above). For
+    /// ≤2 devices this fills the available height edge to edge, same as the
+    /// old `HStack`; for 3+ it keeps a portrait phone-like 1:2 aspect ratio
+    /// so tiles wrap into a legible grid instead of stretching thin.
+    private func tileSize(itemCount: Int, available: CGSize) -> CGSize {
+        guard itemCount > 0 else { return .zero }
+        let spacing: CGFloat = 14
+        let padding: CGFloat = 14
+        let columns = columnCount(for: itemCount)
+        let width = max((available.width - padding * 2 - spacing * CGFloat(columns - 1)) / CGFloat(columns), 300)
+
         if itemCount <= 2 {
-            reorderableTile(selection)
-                .frame(height: max(availableHeight - 28, 0))
-        } else {
-            reorderableTile(selection)
-                .aspectRatio(0.5, contentMode: .fit)
+            return CGSize(width: width, height: max(available.height - padding * 2, 0))
         }
+        return CGSize(width: width, height: width * 2)
     }
 
     private var emptyState: some View {
