@@ -48,10 +48,18 @@ struct MirrorTileFrame<Content: View>: View {
                     .frame(width: 8, height: 8)
                     .scaleEffect(isConnected ? 1 : 0.8)
                     .animation(.spring(response: 0.35, dampingFraction: 0.6), value: isConnected)
+                    // Rendered content claims hit-testing for its own bounds
+                    // even with no gesture attached, which otherwise
+                    // swallows clicks meant for the drag gesture on the
+                    // background layer behind this HStack (see that
+                    // gesture's own comment). Excluding it from hit-testing
+                    // lets those clicks fall through instead.
+                    .allowsHitTesting(false)
                 Text(title)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(.white)
                     .lineLimit(1)
+                    .allowsHitTesting(false)
                 Spacer()
                 if isConnected, isRecording, let recordingStartDate {
                     HStack(spacing: 5) {
