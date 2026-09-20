@@ -82,13 +82,20 @@ struct SidebarView: View {
         .listStyle(.sidebar)
         .navigationTitle("Geräte")
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    appState.refreshNow()
-                } label: {
-                    Image(systemName: "arrow.clockwise")
+            // NavigationSplitView merges every column's toolbar into one
+            // shared window toolbar, so this item stays mounted (and
+            // visible) even once the sidebar column itself is collapsed —
+            // hide it explicitly instead of relying on the column's own
+            // disappearance.
+            if appState.sidebarVisibility != .detailOnly {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        appState.refreshNow()
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .help("Android-Geräteliste aktualisieren (adb erneut prüfen)")
                 }
-                .help("Android-Geräteliste aktualisieren (adb erneut prüfen)")
             }
         }
     }

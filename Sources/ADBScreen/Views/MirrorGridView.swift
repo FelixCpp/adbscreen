@@ -25,19 +25,20 @@ struct MirrorGridView: View {
                 }
 
                 ScrollView {
-                    // A single LazyVGrid — rather than switching between an
-                    // `HStack` (≤2 tiles) and a `LazyVGrid` (>2 tiles) —
-                    // keeps every tile's identity stable across that
-                    // boundary. Swapping between two different container
-                    // *types* made SwiftUI tear down and rebuild the entire
-                    // previous subtree even though the `ForEach` below keeps
-                    // the same `DeviceSelection` ids: each `MirrorTile` (and
-                    // the live mirroring connection underneath it) got
-                    // destroyed and recreated the moment a 3rd tile made the
-                    // layout wrap into a second row, which reconnected every
-                    // already-connected device. One container type for
-                    // every count avoids that: only the columns and tile
-                    // sizing change, so existing tiles simply reflow.
+                    // A single container type for every tile count — rather
+                    // than switching between an `HStack` (≤2 tiles) and a
+                    // grid (>2 tiles) — keeps every tile's identity stable
+                    // across that boundary. Swapping between two different
+                    // container *types* made SwiftUI tear down and rebuild
+                    // the entire previous subtree even though the `ForEach`
+                    // below keeps the same `DeviceSelection` ids: each
+                    // `MirrorTile` (and the live mirroring connection
+                    // underneath it) got destroyed and recreated the moment
+                    // a 3rd tile made the layout wrap into a second row,
+                    // which reconnected every already-connected device. One
+                    // container type for every count avoids that: only the
+                    // per-tile size and position change, so existing tiles
+                    // simply reflow.
                     //
                     // Crucially, that also rules out an `if/else` anywhere
                     // in this per-tile view builder (even just to pick which
@@ -50,16 +51,28 @@ struct MirrorGridView: View {
                     // branching in plain Swift on `CGFloat`s instead, so
                     // every tile always gets the exact same
                     // `.frame(width:height:)` call — only the numbers differ.
-                    let columns = columnCount(for: items.count)
+                    //
+                    // This is a plain `ZStack` with manually computed
+                    // `.position()`s, not a `LazyVGrid` — `.zIndex()` is
+                    // documented to work reliably only between siblings of a
+                    // real (non-lazy) stack. Inside `LazyVGrid`/`LazyHStack`/
+                    // etc. SwiftUI is free to composite each cell into its
+                    // own layer in an order it chooses, so the dragged
+                    // tile's elevated zIndex could still end up painted
+                    // *under* a neighboring tile mid-drag. A plain `ZStack`
+                    // is a real stacking context, so ordering by `.zIndex()`
+                    // is guaranteed instead of best-effort.
                     let size = tileSize(itemCount: items.count, available: proxy.size)
-                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(size.width), spacing: 14), count: columns), spacing: 14) {
-                        ForEach(items, id: \.self) { selection in
+                    let contentSize = gridContentSize(itemCount: items.count, tileSize: size, available: proxy.size)
+                    ZStack(alignment: .topLeading) {
+                        ForEach(Array(items.enumerated()), id: \.element) { index, selection in
                             reorderableTile(selection)
                                 .frame(width: size.width, height: size.height)
+                                .position(tilePosition(for: index, itemCount: items.count, tileSize: size))
                                 .transition(.asymmetric(insertion: .scale(scale: 0.9).combined(with: .opacity), removal: .opacity))
                         }
                     }
-                    .padding(14)
+                    .frame(width: contentSize.width, height: contentSize.height)
                 }
             }
         }
@@ -92,6 +105,35 @@ struct MirrorGridView: View {
             return CGSize(width: width, height: max(available.height - padding * 2, 0))
         }
         return CGSize(width: width, height: width * 2)
+    }
+
+    /// Center point of the tile at `index` (row-major, wrapping at
+    /// `columnCount`), in the same "mirrorGrid" coordinate space the drag
+    /// gesture and `TileFramePreferenceKey` already use.
+    private func tilePosition(for index: Int, itemCount: Int, tileSize: CGSize) -> CGPoint {
+        let spacing: CGFloat = 14
+        let padding: CGFloat = 14
+        let columns = columnCount(for: itemCount)
+        let row = index / columns
+        let col = index % columns
+        let x = padding + tileSize.width / 2 + CGFloat(col) * (tileSize.width + spacing)
+        let y = padding + tileSize.height / 2 + CGFloat(row) * (tileSize.height + spacing)
+        return CGPoint(x: x, y: y)
+    }
+
+    /// The `ZStack`'s own explicit size — needed because `.position()`
+    /// doesn't contribute to a ZStack's intrinsic size the way normal
+    /// in-flow layout would, so without this the ScrollView wouldn't know
+    /// how much content there is to scroll.
+    private func gridContentSize(itemCount: Int, tileSize: CGSize, available: CGSize) -> CGSize {
+        guard itemCount > 0 else { return .zero }
+        let spacing: CGFloat = 14
+        let padding: CGFloat = 14
+        let columns = columnCount(for: itemCount)
+        let rows = Int(ceil(Double(itemCount) / Double(columns)))
+        let width = max(available.width, CGFloat(columns) * tileSize.width + CGFloat(columns - 1) * spacing + padding * 2)
+        let height = CGFloat(rows) * tileSize.height + CGFloat(rows - 1) * spacing + padding * 2
+        return CGSize(width: width, height: height)
     }
 
     private var emptyState: some View {

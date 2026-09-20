@@ -53,8 +53,21 @@ struct DeviceInfoPopover: View {
         switch selection {
         case .android(let serial):
             DispatchQueue.global(qos: .userInitiated).async {
-                let info = ADB.shared.deviceInfo(serial: serial)
+                var info = ADB.shared.deviceInfo(serial: serial)
                 DispatchQueue.main.async {
+                    // `getprop` doesn't reliably expose the screen resolution
+                    // across devices/manufacturers, but scrcpy already learns
+                    // it from the video stream's actual dimensions once
+                    // connected — reuse that instead of another adb round
+                    // trip (which would need `wm size` and still lag behind
+                    // rotation changes).
+                    if let size = self.appState.androidSession(for: serial)?.videoSize, size != .zero {
+                        if let serialIndex = info.firstIndex(where: { $0.0 == "Seriennummer" }) {
+                            info.insert(("Auflösung", "\(Int(size.width))×\(Int(size.height))"), at: serialIndex)
+                        } else {
+                            info.append(("Auflösung", "\(Int(size.width))×\(Int(size.height))"))
+                        }
+                    }
                     self.pairs = info
                     self.isLoading = false
                 }

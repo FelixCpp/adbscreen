@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import SwiftUI
 
 /// Owns the actual mirror sessions (keyed by device) so they can outlive any
 /// single view — the user explicitly "connects" one or more devices from the
@@ -16,6 +17,13 @@ final class AppState: ObservableObject {
     @Published private(set) var simulatedDevices: [AndroidDevice] = AppState.demoDevices
     @Published private(set) var connectedOrder: [DeviceSelection] = []
     @Published var adbAvailable: Bool = ADB.shared.executablePath != nil
+
+    /// Bound to `NavigationSplitView(columnVisibility:)` so the sidebar's
+    /// own toolbar items (e.g. the refresh button) can hide themselves once
+    /// the sidebar is actually collapsed — that toolbar otherwise stays
+    /// merged into the window's toolbar and visible even with the column
+    /// gone.
+    @Published var sidebarVisibility: NavigationSplitViewVisibility = .automatic
 
     /// Selections whose underlying session has actually completed its
     /// handshake (`session.isConnected == true`), as opposed to merely

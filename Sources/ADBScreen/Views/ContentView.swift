@@ -4,7 +4,7 @@ struct ContentView: View {
     @StateObject private var appState = AppState()
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $appState.sidebarVisibility) {
             SidebarView(appState: appState)
                 .navigationSplitViewColumnWidth(min: 260, ideal: 300, max: 380)
         } detail: {
