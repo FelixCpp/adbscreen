@@ -14,17 +14,28 @@ struct MirrorGridView: View {
     @State private var dragTranslation: CGSize = .zero
     @State private var tileFrames: [AppState.DeviceSelection: CGRect] = [:]
 
+    /// Shared with `tileSize`/`tilePosition`/`gridContentSize` below so the
+    /// fullscreen frame computed directly in `body` lines up with theirs.
+    private let tilePadding: CGFloat = 14
+
     var body: some View {
-        // A focused selection replaces the grid with just that one tile
-        // (sized to fill the whole canvas via the existing itemCount == 1
-        // case below) while every other device keeps mirroring in the
-        // background — see `AppState.focusedSelection`.
-        let items: [AppState.DeviceSelection] = {
-            if let focused = appState.focusedSelection, appState.connectedOrder.contains(focused) {
-                return [focused]
-            }
-            return appState.connectedOrder
-        }()
+        // Every connected device stays in the `ForEach` at all times, even
+        // while one is focused — see the per-tile `isFocused`/`isDimmed`
+        // handling below. Earlier this filtered `items` down to just the
+        // focused selection, which removed every other tile from the
+        // `ForEach` and reinserted it later at a brand-new position once
+        // focus cleared. Since the focused tile's own grow/shrink animation
+        // runs across the same ~0.4s as that reinsertion, the two visually
+        // crossed paths — the growing/shrinking tile's edge sweeping right
+        // through the other tile's title bar as it popped back in — which
+        // read as tiles and icons "jumping" mid-transition. Keeping every
+        // tile mounted at its normal grid slot the whole time and merely
+        // toggling opacity/hit-testing for the non-focused ones means
+        // nothing ever has to reappear at a new position — it just fades
+        // in place, out of the way, while only the focused tile's frame
+        // animates between its grid slot and the fullscreen one.
+        let items = appState.connectedOrder
+        let focused = appState.focusedSelection
 
         GeometryReader { proxy in
             ZStack {
@@ -75,9 +86,23 @@ struct MirrorGridView: View {
                     let contentSize = gridContentSize(itemCount: items.count, tileSize: size, available: proxy.size)
                     ZStack(alignment: .topLeading) {
                         ForEach(Array(items.enumerated()), id: \.element) { index, selection in
-                            reorderableTile(selection)
-                                .frame(width: size.width, height: size.height)
-                                .position(tilePosition(for: index, itemCount: items.count, tileSize: size))
+                            let isFocused = focused == selection
+                            // Hidden behind the focused tile rather than
+                            // removed from the ForEach — see the comment on
+                            // `items` above for why that matters.
+                            let isDimmed = focused != nil && !isFocused
+                            reorderableTile(selection, isFocused: isFocused)
+                                .frame(
+                                    width: isFocused ? proxy.size.width - tilePadding * 2 : size.width,
+                                    height: isFocused ? proxy.size.height - tilePadding * 2 : size.height
+                                )
+                                .position(
+                                    isFocused
+                                        ? CGPoint(x: proxy.size.width / 2, y: proxy.size.height / 2)
+                                        : tilePosition(for: index, itemCount: items.count, tileSize: size)
+                                )
+                                .opacity(isDimmed ? 0 : 1)
+                                .allowsHitTesting(!isDimmed)
                                 .transition(.asymmetric(insertion: .scale(scale: 0.9).combined(with: .opacity), removal: .opacity))
                         }
                     }
@@ -87,7 +112,16 @@ struct MirrorGridView: View {
         }
         .coordinateSpace(name: "mirrorGrid")
         .onPreferenceChange(TileFramePreferenceKey.self) { tileFrames = $0 }
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: items)
+        // dampingFraction 1 (critically damped) instead of the old 0.8: an
+        // underdamped spring overshoots a large move and settles back —
+        // visible as a wobble. Critical damping still eases in smoothly but
+        // never overshoots the target position/size. `items` covers real
+        // connect/disconnect/reorder changes; `focused` is separate because
+        // toggling it no longer touches `items` at all (see the comment
+        // above) — every tile stays mounted and only its frame/opacity
+        // changes.
+        .animation(.spring(response: 0.4, dampingFraction: 1), value: items)
+        .animation(.spring(response: 0.4, dampingFraction: 1), value: focused)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .underPageBackgroundColor))
         // Esc leaves the fullscreen focus view and returns to the grid.
@@ -108,7 +142,7 @@ struct MirrorGridView: View {
     private func tileSize(itemCount: Int, available: CGSize) -> CGSize {
         guard itemCount > 0 else { return .zero }
         let spacing: CGFloat = 14
-        let padding: CGFloat = 14
+        let padding = tilePadding
         let columns = columnCount(for: itemCount)
         let width = max((available.width - padding * 2 - spacing * CGFloat(columns - 1)) / CGFloat(columns), 300)
 
@@ -123,7 +157,7 @@ struct MirrorGridView: View {
     /// gesture and `TileFramePreferenceKey` already use.
     private func tilePosition(for index: Int, itemCount: Int, tileSize: CGSize) -> CGPoint {
         let spacing: CGFloat = 14
-        let padding: CGFloat = 14
+        let padding = tilePadding
         let columns = columnCount(for: itemCount)
         let row = index / columns
         let col = index % columns
@@ -139,7 +173,7 @@ struct MirrorGridView: View {
     private func gridContentSize(itemCount: Int, tileSize: CGSize, available: CGSize) -> CGSize {
         guard itemCount > 0 else { return .zero }
         let spacing: CGFloat = 14
-        let padding: CGFloat = 14
+        let padding = tilePadding
         let columns = columnCount(for: itemCount)
         let rows = Int(ceil(Double(itemCount) / Double(columns)))
         let width = max(available.width, CGFloat(columns) * tileSize.width + CGFloat(columns - 1) * spacing + padding * 2)
@@ -167,7 +201,7 @@ struct MirrorGridView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func reorderableTile(_ selection: AppState.DeviceSelection) -> some View {
+    private func reorderableTile(_ selection: AppState.DeviceSelection, isFocused: Bool) -> some View {
         MirrorTile(
             selection: selection,
             appState: appState,
@@ -205,7 +239,7 @@ struct MirrorGridView: View {
         // the active cell a large enough z-index to stay above every other
         // grid item.
         .compositingGroup()
-        .zIndex(draggingSelection == selection ? 1000 : 0)
+        .zIndex(isFocused ? 1000 : (draggingSelection == selection ? 999 : 0))
         // `.scaleEffect()` and `.offset()` only transform where a view is
         // *painted* — they don't move the layout frame that an
         // already-attached `.overlay()` aligns itself to. Both have to be
@@ -226,6 +260,11 @@ struct MirrorGridView: View {
         at location: CGPoint,
         translation: CGSize
     ) {
+        // Reordering doesn't mean anything with only one tile visible, and
+        // every non-focused tile still reports a frame via
+        // `TileFramePreferenceKey` even while hidden (opacity doesn't affect
+        // layout), which could otherwise register as a bogus drop target.
+        guard appState.focusedSelection == nil else { return }
         var transaction = Transaction()
         transaction.animation = nil
         withTransaction(transaction) {

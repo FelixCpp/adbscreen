@@ -84,8 +84,12 @@ struct MirrorTileFrame<Content: View>: View {
                     extrasMenu
                 }
                 if isConnected, let onToggleFocus {
+                    // Always the same glyph (never swaps to a "collapse"
+                    // variant) so there's nothing for SF Symbol's automatic
+                    // replace/morph transition to animate in the first
+                    // place — only `help` (the tooltip) reflects state.
                     titleBarButton(
-                        systemName: isFocused ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right",
+                        systemName: "arrow.up.left.and.arrow.down.right",
                         help: isFocused ? "Vollbild verlassen" : "Vollbild anzeigen",
                         action: onToggleFocus
                     )
@@ -94,12 +98,31 @@ struct MirrorTileFrame<Content: View>: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .background(Color.black.opacity(0.75))
-            .contentShape(Rectangle())
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 3, coordinateSpace: .named("mirrorGrid"))
-                    .onChanged { onTitleBarDragChanged?($0.location, $0.translation) }
-                    .onEnded { _ in onTitleBarDragEnded?() }
+            .background(
+                // The drag-to-reorder gesture lives on this background layer
+                // instead of directly on the HStack above (which used to
+                // carry it as a `.simultaneousGesture`, deliberately
+                // recognized *alongside* whatever's on top of it — including
+                // every button in this title bar). That meant clicking any
+                // button also fed a few points of incidental mouse movement
+                // into `draggingSelection`/`dragTranslation`, which then
+                // played its own little spring-back settle on release (see
+                // the `.scaleEffect`/`.offset` below in `reorderableTile`).
+                // Invisible for buttons that don't otherwise move the tile
+                // (disconnect, screenshot, …), but the fullscreen button
+                // *also* moves the tile as its real effect, so that settle
+                // stacked on top and read as an extra wobble on that one
+                // button specifically. Attaching the gesture to this plain
+                // background view instead means a button's own tap simply
+                // wins hit-testing for its area — the drag only ever starts
+                // from genuinely empty title-bar space (or the title text).
+                Color.black.opacity(0.75)
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 3, coordinateSpace: .named("mirrorGrid"))
+                            .onChanged { onTitleBarDragChanged?($0.location, $0.translation) }
+                            .onEnded { _ in onTitleBarDragEnded?() }
+                    )
             )
             .animation(.easeInOut(duration: 0.25), value: isRecording)
 
@@ -244,6 +267,14 @@ struct MirrorTileFrame<Content: View>: View {
                 .foregroundStyle(tint ?? .white.opacity(0.85))
                 .frame(width: 26, height: 26)
                 .background((tint ?? Color.white).opacity(tint != nil ? 0.18 : 0.12), in: Circle())
+                // Without this, the glyph swap (e.g. the fullscreen button's
+                // expand/collapse icon) inherits whatever ambient animation
+                // is active in the same transaction — e.g. the grid's spring
+                // that repositions the tile on focus toggle — and visibly
+                // bounces along with it. Opting this specific value out of
+                // animation keeps the icon swap an instant cut regardless of
+                // what else is animating around it.
+                .animation(nil, value: systemName)
         }
         .buttonStyle(TitleBarButtonStyle())
         .help(help)
@@ -255,6 +286,19 @@ private struct TitleBarButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.85 : 1)
-            .animation(.spring(response: 0.25, dampingFraction: 0.5), value: configuration.isPressed)
+            // dampingFraction was 0.5 (deliberately bouncy) — invisible for
+            // buttons that don't otherwise move anything (disconnect,
+            // screenshot, …), since it's just a tiny isolated pulse in
+            // place. But the fullscreen button's click *also* kicks off the
+            // grid's own large tile-position animation at the same instant,
+            // and this button's overshoot-and-settle, riding on top of a
+            // parent that's simultaneously sweeping across the screen,
+            // is what read as it "still wobbling" after every other fix.
+            // Critical damping removes the overshoot for every button,
+            // fullscreen included — but at the old response of 0.25 it also
+            // made the dip so fast it stopped reading as a press at all.
+            // A longer response keeps it critically damped (still no
+            // bounce/wobble) while staying slow enough to actually see.
+            .animation(.spring(response: 0.4, dampingFraction: 1), value: configuration.isPressed)
     }
 }
