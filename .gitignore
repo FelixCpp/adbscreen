@@ -15,5 +15,4 @@ xcuserdata/
 # Vendored third-party sources used to build helper binaries.
 # The resulting binaries are committed under Sources/ADBScreen/Resources/.
 # See vendor/SHA256SUMS.txt for provenance of the scrcpy-server release.
-# vendor/uxplay-src is a git submodule (see .gitmodules), not ignored.
 /vendor/scrcpy-server-v4.1
