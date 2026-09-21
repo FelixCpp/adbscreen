@@ -14,6 +14,7 @@ targets:
       - path: Sources/ADBScreen
         excludes:
           - "Info.plist"
+          - "ADBScreen.entitlements"
           - "Resources/**"
       - path: Sources/ADBScreen/Resources/scrcpy-server
         buildPhase: resources
@@ -24,6 +25,8 @@ targets:
     info:
       path: Sources/ADBScreen/Info.plist
       properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSLocalNetworkUsageDescription: "ADBScreen wird zu einem AirPlay-Empfänger, damit dein iPhone/iPad den Bildschirm über das lokale Netzwerk spiegeln kann."
         NSBonjourServices:
           - "_airplay._tcp"
@@ -40,6 +43,7 @@ targets:
         CODE_SIGN_IDENTITY: "-"
         CODE_SIGNING_REQUIRED: NO
         CODE_SIGNING_ALLOWED: YES
+        CODE_SIGN_ENTITLEMENTS: Sources/ADBScreen/ADBScreen.entitlements
         ENABLE_HARDENED_RUNTIME: NO
         ENABLE_APP_SANDBOX: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	ADBScreen ships unsigned/ad-hoc for local development (see project.yml),
+	but distribution builds (package.sh) sign with a Developer ID and enable
+	the Hardened Runtime for notarization. No exceptions are needed today —
+	the app isn't sandboxed and doesn't use JIT, unsigned memory, or DYLD
+	env vars — but this file exists so future entitlements (e.g. sandbox
+	network access) have a home without extra project.yml surgery.
+	-->
+</dict>
+</plist>
