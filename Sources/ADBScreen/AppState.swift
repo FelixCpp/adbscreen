@@ -12,7 +12,6 @@ final class AppState: ObservableObject {
         case simulated(String)
         case airplay
         case usbIOS(String)
-        case iphoneMirroring
     }
 
     @Published var androidDevices: [AndroidDevice] = []
@@ -82,7 +81,6 @@ final class AppState: ObservableObject {
     private var scrcpySessions: [String: ScrcpySession] = [:]
     private var airplaySession: AirPlayReceiverSession?
     private var usbIOSSessions: [String: USBiOSCaptureSession] = [:]
-    private var iphoneMirroringSession: IPhoneMirroringCaptureSession?
     private let powerAssertion = PowerAssertion()
 
     private var pollTimer: Timer?
@@ -175,7 +173,6 @@ final class AppState: ObservableObject {
         case .simulated(let serial): return "simulated:\(serial)"
         case .airplay: return "airplay"
         case .usbIOS(let uniqueID): return "usbios:\(uniqueID)"
-        case .iphoneMirroring: return "iphonemirroring"
         }
     }
 
@@ -188,9 +185,6 @@ final class AppState: ObservableObject {
         }
         if desiredKeys.contains(persistenceKey(for: .airplay)) {
             connect(.airplay)
-        }
-        if desiredKeys.contains(persistenceKey(for: .iphoneMirroring)) {
-            connect(.iphoneMirroring)
         }
     }
 
@@ -253,18 +247,6 @@ final class AppState: ObservableObject {
             usbIOSSessions[uniqueID] = session
             subscribeLiveConnection(for: selection, publisher: session.$isConnected)
             session.start()
-        case .iphoneMirroring:
-            let session = iphoneMirroringSession ?? IPhoneMirroringCaptureSession()
-            iphoneMirroringSession = session
-            subscribeLiveConnection(for: selection, publisher: session.$isConnected)
-            session.onGiveUp = { [weak self] in
-                // Permanently unreachable (e.g. an MDM restriction blocking
-                // iPhone Mirroring outright) — disconnect and forget the
-                // "keep reconnecting" intent so this doesn't silently
-                // relaunch/re-poll on every future app start.
-                self?.disconnect(.iphoneMirroring)
-            }
-            session.start()
         }
         connectedOrder.append(selection)
         applySavedOrder()
@@ -303,9 +285,6 @@ final class AppState: ObservableObject {
         case .usbIOS(let uniqueID):
             usbIOSSessions[uniqueID]?.stop()
             usbIOSSessions.removeValue(forKey: uniqueID)
-        case .iphoneMirroring:
-            iphoneMirroringSession?.stop()
-            iphoneMirroringSession = nil
         }
         updatePowerAssertion()
         persistTileOrder()
@@ -348,10 +327,6 @@ final class AppState: ObservableObject {
 
     func usbIOSSession(for uniqueID: String) -> USBiOSCaptureSession? {
         usbIOSSessions[uniqueID]
-    }
-
-    var iphoneMirroringSessionInstance: IPhoneMirroringCaptureSession? {
-        iphoneMirroringSession
     }
 
     func simulateDevices(count: Int) {

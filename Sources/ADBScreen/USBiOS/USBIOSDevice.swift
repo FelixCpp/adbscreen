@@ -35,10 +35,11 @@ struct USBIOSDevice: Identifiable, Hashable {
 ///    the iPhone/iPad. macOS sees that as an ordinary external camera, with
 ///    no dependency on Apple's own (and apparently discontinued)
 ///    iPhone-as-camera support, and no dependency on iCloud/Continuity
-///    either (which `IPhoneMirroringCaptureSession` needs, and which
-///    Managed Apple IDs — the kind used on locked-down "Dienstrechner"
-///    machines — reported as `iCloudNotHealthy`, i.e. unsupported, when
-///    tested here). This is the mechanism actually worth relying on.
+///    either — unlike Apple's own "iPhone-Spiegelung" (`iPhone
+///    Mirroring.app`), which Managed Apple IDs on locked-down
+///    "Dienstrechner" machines reported as `iCloudNotHealthy` (unsupported),
+///    and which an MDM profile can block outright. This is the mechanism
+///    actually worth relying on, and the only one this app supports now.
 enum USBiOSDiscovery {
     static func discoverDevices() -> [USBIOSDevice] {
         var seenIDs = Set<String>()

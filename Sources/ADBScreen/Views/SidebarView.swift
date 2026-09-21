@@ -101,20 +101,6 @@ struct SidebarView: View {
             } header: {
                 Text("iOS (USB / Capture-Adapter)")
             }
-
-            Section {
-                DeviceRow(
-                    title: "iPhone-Spiegelung",
-                    subtitle: nil,
-                    icon: "apps.iphone",
-                    tint: .indigo,
-                    selection: .iphoneMirroring,
-                    enabled: true,
-                    appState: appState
-                )
-            } header: {
-                Text("iOS (iPhone-Spiegelung)")
-            }
         }
         .animation(.easeInOut(duration: 0.25), value: appState.androidDevices)
         .listStyle(.sidebar)
