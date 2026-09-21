@@ -4,3 +4,5 @@ fa57b36622a53b6aec74c5e5b5c08236165efa445c4f186d48f176ebf9c24eec  scrcpy-win32-v
 5b12172b3264b2889f4583ee64752ce832e29bc8b1089dca81093459697165db  scrcpy-win64-v4.1.zip
 20fd47c9014dd5e0fa77091f3cb7adbda8445a360c4584aeaa0150b5b3988ff3  scrcpy-macos-aarch64-v4.1.tar.gz
 ee2a7223bc8dbdc4f482db1134bcf441178dafb833492b71ca4c22090c58ce72  scrcpy-macos-x86_64-v4.1.tar.gz
+5a931507e2a47697ce1e75185f45cb6ffa04cc2f5c52abb467ae170422b6f96a  adbscreen-usbmirror-helper (built from vendor/qvh-src/cmd/adbscreen-usbmirror-helper, arm64, libusb 1.0.30)
+bb9aa381bfc60cbb4347b815fa07e0d546f8d43f910a3edb99d3758c6f6b3ed7  libusb-1.0.0.dylib (Homebrew libusb 1.0.30, re-signed, install name rewritten to @executable_path)

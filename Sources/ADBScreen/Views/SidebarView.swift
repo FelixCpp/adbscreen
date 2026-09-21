@@ -77,6 +77,20 @@ struct SidebarView: View {
             } header: {
                 Text("iOS (AirPlay)")
             }
+
+            Section {
+                DeviceRow(
+                    title: appState.usbMirrorDisplayName,
+                    subtitle: nil,
+                    icon: "cable.connector",
+                    tint: .purple,
+                    selection: .usbMirror,
+                    enabled: true,
+                    appState: appState
+                )
+            } header: {
+                Text("iOS (USB)")
+            }
         }
         .animation(.easeInOut(duration: 0.25), value: appState.androidDevices)
         .listStyle(.sidebar)

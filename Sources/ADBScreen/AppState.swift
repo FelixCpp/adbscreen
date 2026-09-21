@@ -11,6 +11,7 @@ final class AppState: ObservableObject {
         case android(String)
         case simulated(String)
         case airplay
+        case usbMirror
     }
 
     @Published var androidDevices: [AndroidDevice] = []
@@ -72,8 +73,19 @@ final class AppState: ObservableObject {
     /// handshake to report it).
     var airplayDisplayName: String { airplayDeviceName ?? airplayServiceName }
 
+    /// The connected iPhone/iPad's device name over the USB-mirroring
+    /// path, mirrored from the active USBMirrorReceiverSession — same
+    /// pattern as `airplayDeviceName` above.
+    @Published private(set) var usbMirrorDeviceName: String?
+    private var usbMirrorDeviceNameCancellable: AnyCancellable?
+
+    /// What to show for the USB-mirroring entry before a device name is
+    /// known (e.g. while waiting for a cable connection).
+    var usbMirrorDisplayName: String { usbMirrorDeviceName ?? "iPhone (USB)" }
+
     private var scrcpySessions: [String: ScrcpySession] = [:]
     private var airplaySession: AirPlayReceiverSession?
+    private var usbMirrorSession: USBMirrorReceiverSession?
     private let powerAssertion = PowerAssertion()
 
     private var pollTimer: Timer?
@@ -165,6 +177,7 @@ final class AppState: ObservableObject {
         case .android(let serial): return "android:\(serial)"
         case .simulated(let serial): return "simulated:\(serial)"
         case .airplay: return "airplay"
+        case .usbMirror: return "usbMirror"
         }
     }
 
@@ -175,6 +188,9 @@ final class AppState: ObservableObject {
         }
         if desiredKeys.contains(persistenceKey(for: .airplay)) {
             connect(.airplay)
+        }
+        if desiredKeys.contains(persistenceKey(for: .usbMirror)) {
+            connect(.usbMirror)
         }
     }
 
@@ -231,6 +247,14 @@ final class AppState: ObservableObject {
                 .sink { [weak self] name in self?.airplayDeviceName = name }
             subscribeLiveConnection(for: selection, publisher: session.$isConnected)
             session.start()
+        case .usbMirror:
+            let session = usbMirrorSession ?? USBMirrorReceiverSession()
+            usbMirrorSession = session
+            usbMirrorDeviceNameCancellable = session.$deviceName
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] name in self?.usbMirrorDeviceName = name }
+            subscribeLiveConnection(for: selection, publisher: session.$isConnected)
+            session.start()
         }
         connectedOrder.append(selection)
         applySavedOrder()
@@ -266,6 +290,11 @@ final class AppState: ObservableObject {
             airplaySession = nil
             airplayDeviceNameCancellable = nil
             airplayDeviceName = nil
+        case .usbMirror:
+            usbMirrorSession?.stop()
+            usbMirrorSession = nil
+            usbMirrorDeviceNameCancellable = nil
+            usbMirrorDeviceName = nil
         }
         updatePowerAssertion()
         persistTileOrder()
@@ -329,6 +358,10 @@ final class AppState: ObservableObject {
 
     var airplaySessionInstance: AirPlayReceiverSession? {
         airplaySession
+    }
+
+    var usbMirrorSessionInstance: USBMirrorReceiverSession? {
+        usbMirrorSession
     }
 
     /// Re-checks for the adb binary (in case it was installed after this

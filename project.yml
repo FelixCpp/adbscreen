@@ -20,6 +20,10 @@ targets:
         buildPhase: resources
       - path: Sources/ADBScreen/Resources/adbscreen-airplay-helper
         buildPhase: resources
+      - path: Sources/ADBScreen/Resources/adbscreen-usbmirror-helper
+        buildPhase: resources
+      - path: Sources/ADBScreen/Resources/libusb-1.0.0.dylib
+        buildPhase: resources
       - path: Sources/ADBScreen/Resources/Assets.xcassets
         buildPhase: resources
     info:

@@ -1,7 +1,9 @@
 # ADBScreen
 
-A macOS app that mirrors Android device screens (via `adb`/`scrcpy`) and
-receives AirPlay streams from iPhone/iPad, all in one place.
+A macOS app that mirrors Android device screens (via `adb`/`scrcpy`),
+receives AirPlay streams from iPhone/iPad, and mirrors an iPhone/iPad
+over a USB cable (no Wi-Fi/AirPlay required — useful on managed Macs
+where AirPlay is disabled by policy), all in one place.
 
 ## Requirements
 
@@ -77,11 +79,12 @@ membership and a **Developer ID Application** certificate:
    ./package.sh
    ```
 
-This signs the app (and the embedded `adbscreen-airplay-helper`
-binary) with your Developer ID, enables the Hardened Runtime, submits
-the DMG to Apple's notary service, waits for approval, and staples the
-notarization ticket to the DMG. That stapled DMG is the artifact to
-hand out — recipients can open it without any Gatekeeper warning.
+This signs the app (and the embedded `adbscreen-airplay-helper` and
+`adbscreen-usbmirror-helper` binaries) with your Developer ID, enables
+the Hardened Runtime, submits the DMG to Apple's notary service, waits
+for approval, and staples the notarization ticket to the DMG. That
+stapled DMG is the artifact to hand out — recipients can open it
+without any Gatekeeper warning.
 
 ### CI
 
@@ -113,7 +116,39 @@ it just won't attach anything to a release.
   spec; the source of truth for the Xcode project (`ADBScreen.xcodeproj`
   is generated and gitignored).
 - `Sources/ADBScreen` — app sources, `Info.plist`, entitlements, and
-  bundled resources (`scrcpy-server`, `adbscreen-airplay-helper`).
+  bundled resources (`scrcpy-server`, `adbscreen-airplay-helper`,
+  `adbscreen-usbmirror-helper`, `libusb-1.0.0.dylib`).
 - `vendor` — third-party sources used to build the bundled
-  `adbscreen-airplay-helper` binary (see `vendor/SHA256SUMS.txt` for
-  provenance of the vendored `scrcpy-server` release).
+  `adbscreen-airplay-helper` and `adbscreen-usbmirror-helper` binaries
+  (see `vendor/SHA256SUMS.txt` for provenance of the vendored
+  `scrcpy-server` release and the USB-mirroring helper/libusb binaries,
+  and `vendor/qvh-src/ADBSCREEN_NOTES.md` for how the USB-mirroring
+  helper is built and what's patched relative to upstream
+  `danielpaulus/quicktime_video_hack`).
+
+### iPhone/iPad USB mirroring
+
+Apple has no public API for reading an iPhone/iPad's screen over USB;
+the AirPlay-based mirroring above is the documented, supported path but
+requires the local network (and is disabled entirely on some managed
+Macs). USB mirroring instead uses the same private, undocumented USB
+protocol that QuickTime Player/Xcode use internally for "record iPhone
+screen via USB", reverse-engineered and published as MIT-licensed open
+source by
+[`danielpaulus/quicktime_video_hack`](https://github.com/danielpaulus/quicktime_video_hack)
+(the same approach used by tools like Vysor). `adbscreen-usbmirror-helper`
+is a small Go binary built from a vendored, patched copy of that project
+(`vendor/qvh-src`) which talks to the device over `libusb` and streams
+H.264 frames to ADBScreen over a Unix socket, same as the AirPlay helper.
+
+Because it links `libusb`, the app also bundles a relocatable
+`libusb-1.0.0.dylib` next to the helper binary (rewritten with
+`install_name_tool` to load via `@executable_path`) so end users don't
+need Homebrew/`libusb` installed. See `vendor/qvh-src/ADBSCREEN_NOTES.md`
+for the exact rebuild steps if you need to update either binary.
+
+**Known limitation**: on some Macs, macOS's own `usbmuxd`/device-management
+daemons can hold an exclusive claim on the required USB interface, which
+can prevent the helper from fully activating the device's hidden
+streaming USB configuration. If USB mirroring fails to connect, the
+tile surfaces whatever error the helper gives up with after its retries.

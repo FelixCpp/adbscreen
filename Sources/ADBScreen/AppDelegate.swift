@@ -13,5 +13,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         ScrcpySession.stopAll()
         AirPlayReceiverSession.stopAll()
+        USBMirrorReceiverSession.stopAll()
     }
 }

@@ -94,6 +94,20 @@ struct DeviceInfoPopover: View {
             }
             pairs = info
             isLoading = false
+        case .usbMirror:
+            var info: [(String, String)] = []
+            if let deviceName = appState.usbMirrorDeviceName {
+                info.append(("Gerätename", deviceName))
+            }
+            if let session = appState.usbMirrorSessionInstance {
+                let status = session.isConnected ? "Verbunden" : (session.isWaiting ? "Wartet auf USB-Verbindung" : "Getrennt")
+                info.append(("Status", status))
+                if session.videoSize != .zero {
+                    info.append(("Auflösung", "\(Int(session.videoSize.width))×\(Int(session.videoSize.height))"))
+                }
+            }
+            pairs = info
+            isLoading = false
         }
     }
 }
