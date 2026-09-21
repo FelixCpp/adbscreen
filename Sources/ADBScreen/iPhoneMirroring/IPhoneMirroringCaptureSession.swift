@@ -8,6 +8,7 @@ enum IPhoneMirroringCaptureError: Error, LocalizedError {
     case appLaunchFailed
     case windowNotFound
     case streamFailed(String)
+    case gaveUpWaiting
 
     var errorDescription: String? {
         switch self {
@@ -17,6 +18,8 @@ enum IPhoneMirroringCaptureError: Error, LocalizedError {
             return "Kein Fenster von „iPhone-Spiegelung“ gefunden."
         case .streamFailed(let message):
             return message
+        case .gaveUpWaiting:
+            return "„iPhone-Spiegelung“ ist nicht erreichbar (z. B. weil dieses Konto kein volles iCloud/Continuity unterstützt, etwa bei einer verwalteten Apple-ID). Bitte trennen und den USB-/HDMI-Weg nutzen."
         }
     }
 }
@@ -54,15 +57,37 @@ final class IPhoneMirroringCaptureSession: NSObject, ObservableObject {
     @Published private(set) var lastError: String?
     @Published private(set) var videoSize: CGSize = .zero
 
+    /// Called once, exactly when this session permanently gives up (bounded
+    /// retry count exhausted). AppState uses this to auto-disconnect the
+    /// tile and forget the "keep this connected" intent, so a doomed
+    /// connection (e.g. blocked by an MDM restriction) doesn't relaunch and
+    /// re-poll on every subsequent app start.
+    var onGiveUp: (() -> Void)?
+
     private var stream: SCStream?
     private var pollTask: Task<Void, Never>?
     private let sampleQueue = DispatchQueue(label: "adbscreen.iphonemirroring.capture")
     private var stopped = false
 
+    /// The system app's window (and thus a successful attach) can take a
+    /// few seconds to appear after a fresh launch. But if it *never*
+    /// appears — e.g. `iPhone Mirroring.app` self-terminates immediately
+    /// with `iCloudNotHealthy` on Managed Apple IDs, or macOS shows its own
+    /// "your admin has restricted this" alert when an MDM profile disables
+    /// iPhone Mirroring outright — polling forever every second means
+    /// `SCShareableContent` (a screen-recording-gated API) is called
+    /// indefinitely in the background, which macOS surfaces as repeated
+    /// "Bildschirmaufnahme"/recording-indicator activity even though the
+    /// permission itself is already granted. So this gives up after a
+    /// bounded number of attempts instead of retrying forever.
+    private static let maxAttachAttempts = 8
+    private var attachAttempts = 0
+
     func start() {
         stopped = false
         isWaiting = true
         lastError = nil
+        attachAttempts = 0
 
         NSWorkspace.shared.open(
             Self.appURL,
@@ -106,6 +131,16 @@ final class IPhoneMirroringCaptureSession: NSObject, ObservableObject {
     private func pollUntilAttached() async {
         while !stopped, !Task.isCancelled {
             if await attachToWindowIfAvailable() { return }
+            attachAttempts += 1
+            if attachAttempts >= Self.maxAttachAttempts {
+                await MainActor.run {
+                    self.isWaiting = false
+                    self.lastError = IPhoneMirroringCaptureError.gaveUpWaiting.errorDescription
+                    self.stopped = true
+                    self.onGiveUp?()
+                }
+                return
+            }
             try? await Task.sleep(nanoseconds: 1_000_000_000)
         }
     }
@@ -137,6 +172,7 @@ final class IPhoneMirroringCaptureSession: NSObject, ObservableObject {
             self.videoSize = window.frame.size
             self.isWaiting = false
             self.lastError = nil
+            self.attachAttempts = 0
             return true
         } catch {
             self.lastError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
@@ -185,6 +221,7 @@ extension IPhoneMirroringCaptureSession: SCStreamDelegate {
             if !self.stopped {
                 self.lastError = error.localizedDescription
                 self.isWaiting = true
+                self.attachAttempts = 0
                 self.pollTask = Task { [weak self] in
                     await self?.pollUntilAttached()
                 }

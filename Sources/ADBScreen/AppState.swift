@@ -257,6 +257,13 @@ final class AppState: ObservableObject {
             let session = iphoneMirroringSession ?? IPhoneMirroringCaptureSession()
             iphoneMirroringSession = session
             subscribeLiveConnection(for: selection, publisher: session.$isConnected)
+            session.onGiveUp = { [weak self] in
+                // Permanently unreachable (e.g. an MDM restriction blocking
+                // iPhone Mirroring outright) — disconnect and forget the
+                // "keep reconnecting" intent so this doesn't silently
+                // relaunch/re-poll on every future app start.
+                self?.disconnect(.iphoneMirroring)
+            }
             session.start()
         }
         connectedOrder.append(selection)
