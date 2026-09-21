@@ -31,9 +31,5 @@ fi
 echo "==> Removing stale DerivedData (from Xcode/run.sh builds, not build.sh's own temp dir)"
 find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -iname "ADBScreen-*" -exec rm -rf {} +
 
-echo "==> Rebuilding"
+echo "==> Rebuilding and installing"
 ./build.sh
-
-echo ""
-echo "Done. Move build/ADBScreen.app to /Applications, or run it in place with:"
-echo "  open build/ADBScreen.app"
