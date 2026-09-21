@@ -105,6 +105,17 @@ struct DeviceInfoPopover: View {
             }
             pairs = info
             isLoading = false
+        case .iphoneMirroring:
+            var info: [(String, String)] = [("Verbindung", "iPhone-Spiegelung (Continuity)")]
+            if let session = appState.iphoneMirroringSessionInstance {
+                let status = session.isConnected ? "Verbunden" : (session.isWaiting ? "Wartet auf Fenster…" : "Getrennt")
+                info.append(("Status", status))
+                if session.videoSize != .zero {
+                    info.append(("Auflösung", "\(Int(session.videoSize.width))×\(Int(session.videoSize.height))"))
+                }
+            }
+            pairs = info
+            isLoading = false
         }
     }
 }

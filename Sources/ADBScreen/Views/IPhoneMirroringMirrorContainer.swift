@@ -1,23 +1,21 @@
 import AppKit
 import SwiftUI
 
-/// The USB-iOS tile in the mirror grid. The session is owned by AppState
-/// (not this view) so it keeps running while other tiles come and go.
+/// The iPhone-Spiegelung tile in the mirror grid. The session is owned by
+/// AppState (not this view) so it keeps running while other tiles come and
+/// go.
 ///
-/// No recording button here (unlike the Android tile) — same reasoning as
-/// the AirPlay tile doesn't get one, just for a different underlying
-/// reason: recording would need to re-encode `AVCaptureVideoPreviewLayer`
-/// output ourselves, which isn't worth it for what's meant to be a simple
-/// AirPlay-restriction workaround. Screenshots reuse the same
-/// ScreenCaptureKit-based window snapshot as every other tile type.
-struct USBiOSMirrorTile: View {
-    @ObservedObject var session: USBiOSCaptureSession
+/// No recording button, same reasoning as the AirPlay tile: this only reads
+/// pixels of Apple's own system window, so there's no back-channel to
+/// request anything on demand.
+struct IPhoneMirroringMirrorTile: View {
+    @ObservedObject var session: IPhoneMirroringCaptureSession
     @ObservedObject var appState: AppState
     var isFocused: Bool = false
     var onToggleFocus: (() -> Void)? = nil
     var onTitleBarDragChanged: ((CGPoint, CGSize) -> Void)?
     var onTitleBarDragEnded: (() -> Void)?
-    @State private var mirrorView: USBiOSDisplayNSView?
+    @State private var mirrorView: AirPlayDisplayNSView?
     @State private var screenshotTrigger = 0
     /// See AndroidMirrorTile's `displayConnected` doc comment: same
     /// artificial minimum-visible-duration trick to prevent the
@@ -26,21 +24,21 @@ struct USBiOSMirrorTile: View {
 
     var body: some View {
         MirrorTileFrame(
-            title: session.displayName,
+            title: "iPhone-Spiegelung",
             isConnected: displayConnected,
-            statusText: "Verbinde mit \(session.displayName)…",
-            instructionText: "iPhone/iPad per USB-Kabel anschließen und \u{201E}Diesem Computer vertrauen\u{201C} bestätigen. Falls das Gerät nicht erscheint (üblich auf aktuellem macOS): Lightning/USB-C-zu-HDMI-Adapter am iPhone/iPad + USB-HDMI-Capture-Dongle am Mac verwenden.",
+            statusText: "Warte auf „iPhone-Spiegelung“…",
+            instructionText: "Systemeinstellungen → Allgemein → AirDrop & Handoff → „iPhone-Spiegelung“ einrichten (gleiche Apple-ID auf Mac und iPhone, Bluetooth/WLAN aktiv).",
             errorText: session.lastError,
-            footerNote: "Nur Anzeige – Steuerung ist über USB-Spiegelung nicht möglich.",
+            footerNote: "Nutzt Apples Continuity-Funktion, nicht AirPlay – Steuerung erfolgt direkt im Systemfenster, nicht über diese Kachel.",
             onScreenshot: takeScreenshot,
             screenshotTrigger: screenshotTrigger,
             isFocused: isFocused,
             onToggleFocus: onToggleFocus,
             onTitleBarDragChanged: onTitleBarDragChanged,
             onTitleBarDragEnded: onTitleBarDragEnded,
-            onDisconnect: { appState.disconnect(.usbIOS(session.uniqueID)) }
+            onDisconnect: { appState.disconnect(.iphoneMirroring) }
         ) {
-            USBiOSMirrorView(session: session) { mirrorView = $0 }
+            IPhoneMirroringMirrorView(session: session) { mirrorView = $0 }
         }
         .task(id: session.isConnected) {
             guard session.isConnected else {
@@ -58,12 +56,11 @@ struct USBiOSMirrorTile: View {
             presentError(title: "Screenshot fehlgeschlagen", "Die Video-Ansicht ist noch nicht bereit.")
             return
         }
-        let name = session.displayName
         Task {
             do {
                 let image = try await WindowSnapshot.capture(of: mirrorView)
                 screenshotTrigger += 1
-                ScreenshotSaver.promptAndSave(image: image, suggestedName: ScreenshotSaver.filename(prefix: name))
+                ScreenshotSaver.promptAndSave(image: image, suggestedName: ScreenshotSaver.filename(prefix: "iPhone-Spiegelung"))
             } catch {
                 presentError(title: "Screenshot fehlgeschlagen", error.localizedDescription)
             }

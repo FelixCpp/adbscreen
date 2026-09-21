@@ -57,6 +57,17 @@ struct MirrorTile: View {
                     onTitleBarDragEnded: onTitleBarDragEnded
                 )
             }
+        case .iphoneMirroring:
+            if let session = appState.iphoneMirroringSessionInstance {
+                IPhoneMirroringMirrorTile(
+                    session: session,
+                    appState: appState,
+                    isFocused: isFocused,
+                    onToggleFocus: toggleFocus,
+                    onTitleBarDragChanged: onTitleBarDragChanged,
+                    onTitleBarDragEnded: onTitleBarDragEnded
+                )
+            }
         }
     }
 }

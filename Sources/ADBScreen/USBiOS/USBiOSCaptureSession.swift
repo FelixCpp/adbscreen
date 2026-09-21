@@ -10,7 +10,7 @@ enum USBiOSCaptureError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .deviceUnavailable:
-            return "Gerät wurde getrennt oder ist nicht mehr erreichbar. USB-Kabel prüfen und am iPhone/iPad \u{201E}Diesem Computer vertrauen\u{201C} bestätigen."
+            return "Gerät wurde getrennt oder ist nicht mehr erreichbar. Kabel/Adapter prüfen (und, falls es sich um ein direkt verbundenes iPhone/iPad handelt, am Gerät \u{201E}Diesem Computer vertrauen\u{201C} bestätigen)."
         case .inputUnavailable:
             return "Videoeingang konnte nicht hinzugefügt werden."
         case .configurationFailed(let message):
@@ -19,10 +19,13 @@ enum USBiOSCaptureError: Error, LocalizedError {
     }
 }
 
-/// Mirrors one iPhone/iPad over USB via `AVCaptureSession`, the same public
-/// mechanism QuickTime Player uses for its "iPhone" recording source — no
-/// AirPlay, no network, so it keeps working on machines where AirPlay is
-/// blocked by policy.
+/// Captures video from one USB-connected external device via
+/// `AVCaptureSession` — no AirPlay, no network, so it keeps working on
+/// machines where AirPlay is blocked by policy. In practice this is almost
+/// always a USB HDMI capture dongle fed by a Lightning/USB-C → HDMI adapter
+/// cable from an iPhone/iPad — see `USBiOSDiscovery`'s doc comment for why
+/// a directly-connected iPhone/iPad (no adapter) no longer works on current
+/// macOS.
 ///
 /// Unlike `AirPlayReceiverSession` (which decodes a raw H.264 elementary
 /// stream forwarded by a bundled helper process), `AVCaptureSession` itself
