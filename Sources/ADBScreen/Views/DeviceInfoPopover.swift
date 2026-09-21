@@ -94,6 +94,17 @@ struct DeviceInfoPopover: View {
             }
             pairs = info
             isLoading = false
+        case .usbIOS(let uniqueID):
+            var info: [(String, String)] = [("Gerätename", title), ("Verbindung", "USB")]
+            if let session = appState.usbIOSSession(for: uniqueID) {
+                let status = session.isConnected ? "Verbunden" : (session.isWaiting ? "Verbindet…" : "Getrennt")
+                info.append(("Status", status))
+                if session.videoSize != .zero {
+                    info.append(("Auflösung", "\(Int(session.videoSize.width))×\(Int(session.videoSize.height))"))
+                }
+            }
+            pairs = info
+            isLoading = false
         }
     }
 }

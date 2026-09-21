@@ -77,6 +77,28 @@ struct SidebarView: View {
             } header: {
                 Text("iOS (AirPlay)")
             }
+
+            Section {
+                if appState.usbIOSDevices.isEmpty {
+                    Text("Kein Gerät per USB verbunden")
+                        .foregroundStyle(.secondary)
+                        .padding(.vertical, 4)
+                }
+                ForEach(appState.usbIOSDevices) { device in
+                    DeviceRow(
+                        title: device.name,
+                        subtitle: nil,
+                        icon: "cable.connector",
+                        tint: .purple,
+                        selection: .usbIOS(device.uniqueID),
+                        enabled: true,
+                        appState: appState
+                    )
+                    .transition(.asymmetric(insertion: .opacity.combined(with: .move(edge: .leading)), removal: .opacity))
+                }
+            } header: {
+                Text("iOS (USB)")
+            }
         }
         .animation(.easeInOut(duration: 0.25), value: appState.androidDevices)
         .listStyle(.sidebar)

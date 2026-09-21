@@ -46,6 +46,17 @@ struct MirrorTile: View {
                     onTitleBarDragEnded: onTitleBarDragEnded
                 )
             }
+        case .usbIOS(let uniqueID):
+            if let session = appState.usbIOSSession(for: uniqueID) {
+                USBiOSMirrorTile(
+                    session: session,
+                    appState: appState,
+                    isFocused: isFocused,
+                    onToggleFocus: toggleFocus,
+                    onTitleBarDragChanged: onTitleBarDragChanged,
+                    onTitleBarDragEnded: onTitleBarDragEnded
+                )
+            }
         }
     }
 }

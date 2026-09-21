@@ -31,5 +31,7 @@
 	<true/>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>ADBScreen wird zu einem AirPlay-Empfänger, damit dein iPhone/iPad den Bildschirm über das lokale Netzwerk spiegeln kann.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>ADBScreen greift auf ein per USB verbundenes iPhone/iPad als Kamera-/Bildschirmquelle zu, um dessen Bildschirm zu spiegeln – dieselbe Technik wie QuickTime Players „Neue Filmaufnahme“.</string>
 </dict>
 </plist>

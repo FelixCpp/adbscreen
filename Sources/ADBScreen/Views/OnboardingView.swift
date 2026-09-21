@@ -12,6 +12,7 @@ import SwiftUI
 struct OnboardingView: View {
     @ObservedObject var appState: AppState
     @StateObject private var screenCapture = ScreenCapturePermission()
+    @StateObject private var camera = CameraPermission()
     @AppStorage("adbscreen.localNetworkConfirmed") private var localNetworkConfirmed = false
     @Environment(\.dismissWindow) private var dismissWindow
 
@@ -63,6 +64,23 @@ struct OnboardingView: View {
                             .controlSize(.small)
                         }
                     }
+
+                    OnboardingStep(
+                        done: camera.isGranted,
+                        title: "Kamera erlauben",
+                        detail: "Nur nötig, wenn du ein iPhone/iPad per USB-Kabel spiegeln willst — ein verbundenes Gerät meldet sich dafür wie eine Kamera, genau wie bei QuickTime Players „Neue Filmaufnahme“."
+                    ) {
+                        HStack {
+                            Button("Erlauben") { camera.request() }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            Button("Systemeinstellungen öffnen") {
+                                openSettings(pane: "Privacy_Camera")
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        }
+                    }
                 }
                 .padding(20)
             }
@@ -71,9 +89,11 @@ struct OnboardingView: View {
         }
         .frame(width: 460, height: 460)
         .onAppear { screenCapture.refresh() }
+        .onAppear { camera.refresh() }
         .onDisappear { appState.showOnboarding = false }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             screenCapture.refresh()
+            camera.refresh()
         }
     }
 
