@@ -1,21 +1,22 @@
 import AppKit
 import SwiftUI
 
-/// The AirPlay tile in the mirror grid. The session is owned by AppState
+/// The USB-iOS tile in the mirror grid. The session is owned by AppState
 /// (not this view) so it keeps running while other tiles come and go.
 ///
-/// No recording button here (unlike the Android tile) — AirPlay Mirroring
-/// has no back-channel to request a keyframe on demand, which makes an
-/// on-demand recording start structurally unreliable; see
-/// AirPlayReceiverSession's doc comment for the full story.
-struct AirPlayMirrorTile: View {
-    @ObservedObject var session: AirPlayReceiverSession
+/// No recording button here (unlike the Android tile) — recording would
+/// need to re-encode `AVCaptureVideoPreviewLayer` output ourselves, which
+/// isn't worth it for what's meant to be a simple, network-independent
+/// mirroring path. Screenshots reuse the same ScreenCaptureKit-based window
+/// snapshot as every other tile type.
+struct USBiOSMirrorTile: View {
+    @ObservedObject var session: USBiOSCaptureSession
     @ObservedObject var appState: AppState
     var isFocused: Bool = false
     var onToggleFocus: (() -> Void)? = nil
     var onTitleBarDragChanged: ((CGPoint, CGSize) -> Void)?
     var onTitleBarDragEnded: (() -> Void)?
-    @State private var mirrorView: AirPlayDisplayNSView?
+    @State private var mirrorView: USBiOSDisplayNSView?
     @State private var screenshotTrigger = 0
     /// See AndroidMirrorTile's `displayConnected` doc comment: same
     /// artificial minimum-visible-duration trick to prevent the
@@ -24,21 +25,21 @@ struct AirPlayMirrorTile: View {
 
     var body: some View {
         MirrorTileFrame(
-            title: appState.airplayDisplayName,
+            title: session.displayName,
             isConnected: displayConnected,
-            statusText: "Warte auf Bildschirmsynchronisierung…",
-            instructionText: "Kontrollzentrum auf dem iPhone öffnen → Bildschirmsynchronisierung → „\(appState.airplayServiceName)“ auswählen.",
+            statusText: "Verbinde mit \(session.displayName)…",
+            instructionText: "iPhone/iPad per USB-Kabel anschließen und \u{201E}Diesem Computer vertrauen\u{201C} bestätigen. Falls das Gerät nicht erscheint (üblich auf aktuellem macOS): Lightning/USB-C-zu-HDMI-Adapter am iPhone/iPad + USB-HDMI-Capture-Dongle am Mac verwenden.",
             errorText: session.lastError,
-            footerNote: "Nur Anzeige – Steuerung ist über AirPlay nicht möglich.",
+            footerNote: "Nur Anzeige – Steuerung ist über USB-Spiegelung nicht möglich.",
             onScreenshot: takeScreenshot,
             screenshotTrigger: screenshotTrigger,
             isFocused: isFocused,
             onToggleFocus: onToggleFocus,
             onTitleBarDragChanged: onTitleBarDragChanged,
             onTitleBarDragEnded: onTitleBarDragEnded,
-            onDisconnect: { appState.disconnect(.airplay) }
+            onDisconnect: { appState.disconnect(.usbIOS(session.uniqueID)) }
         ) {
-            AirPlayMirrorView(session: session) { mirrorView = $0 }
+            USBiOSMirrorView(session: session) { mirrorView = $0 }
         }
         .task(id: session.isConnected) {
             guard session.isConnected else {
@@ -56,7 +57,7 @@ struct AirPlayMirrorTile: View {
             presentError(title: "Screenshot fehlgeschlagen", "Die Video-Ansicht ist noch nicht bereit.")
             return
         }
-        let name = appState.airplayDisplayName
+        let name = session.displayName
         Task {
             do {
                 let image = try await WindowSnapshot.capture(of: mirrorView)

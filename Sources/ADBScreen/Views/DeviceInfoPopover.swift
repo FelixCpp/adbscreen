@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// Metadata popover shown when clicking a device's icon badge in the
-/// sidebar. Android gets real properties via `adb shell getprop`; AirPlay
-/// has no such channel, so it just shows what the receiver itself knows.
+/// sidebar. Android gets real properties via `adb shell getprop`; the USB
+/// capture path has no such channel, so it just shows what the capture
+/// session itself knows.
 struct DeviceInfoPopover: View {
     let selection: AppState.DeviceSelection
     let title: String
@@ -80,13 +81,10 @@ struct DeviceInfoPopover: View {
                 ("Seriennummer", serial),
             ]
             isLoading = false
-        case .airplay:
-            var info: [(String, String)] = [("Dienstname", appState.airplayServiceName)]
-            if let deviceName = appState.airplayDeviceName {
-                info.append(("Gerätename", deviceName))
-            }
-            if let session = appState.airplaySessionInstance {
-                let status = session.isConnected ? "Verbunden" : (session.isWaiting ? "Wartet auf Bildschirmsynchronisierung" : "Getrennt")
+        case .usbIOS(let uniqueID):
+            var info: [(String, String)] = [("Gerätename", title), ("Verbindung", "USB")]
+            if let session = appState.usbIOSSession(for: uniqueID) {
+                let status = session.isConnected ? "Verbunden" : (session.isWaiting ? "Verbindet…" : "Getrennt")
                 info.append(("Status", status))
                 if session.videoSize != .zero {
                     info.append(("Auflösung", "\(Int(session.videoSize.width))×\(Int(session.videoSize.height))"))

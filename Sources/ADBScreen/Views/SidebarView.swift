@@ -65,17 +65,27 @@ struct SidebarView: View {
             }
 
             Section {
-                DeviceRow(
-                    title: appState.airplayDisplayName,
-                    subtitle: nil,
-                    icon: "iphone",
-                    tint: .blue,
-                    selection: .airplay,
-                    enabled: true,
-                    appState: appState
-                )
+                if appState.usbIOSDevices.isEmpty {
+                    Text("Kein Gerät gefunden – direkte iPhone-USB-Erkennung funktioniert auf aktuellem macOS meist nicht mehr; empfohlen: Lightning/USB-C-zu-HDMI-Adapter + USB-HDMI-Capture-Dongle.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .padding(.vertical, 4)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                ForEach(appState.usbIOSDevices) { device in
+                    DeviceRow(
+                        title: device.name,
+                        subtitle: nil,
+                        icon: "cable.connector",
+                        tint: .purple,
+                        selection: .usbIOS(device.uniqueID),
+                        enabled: true,
+                        appState: appState
+                    )
+                    .transition(.asymmetric(insertion: .opacity.combined(with: .move(edge: .leading)), removal: .opacity))
+                }
             } header: {
-                Text("iOS (AirPlay)")
+                Text("iOS (USB / Capture-Adapter)")
             }
         }
         .animation(.easeInOut(duration: 0.25), value: appState.androidDevices)

@@ -3,16 +3,14 @@ import SwiftUI
 
 /// First-run (and re-openable) setup checklist covering everything ADBScreen
 /// needs to actually work: the adb binary, and the two macOS permissions
-/// (Local Network for AirPlay, Screen Recording for screenshots/recordings).
-/// There's no Android device step — mirroring an actual device is optional
-/// (AirPlay and the demo devices work without one), so its presence isn't a
-/// setup criterion. Steps that can be checked live update automatically; the
-/// Local Network step has no public "is granted" API, so it's a manual
-/// checkbox instead.
+/// (Bildschirmaufnahme for screenshots/recordings, Kamera for USB-Capture-
+/// Adapter). There's no Android device step — mirroring an actual device is
+/// optional (the demo devices work without one), so its presence isn't a
+/// setup criterion. Steps that can be checked live update automatically.
 struct OnboardingView: View {
     @ObservedObject var appState: AppState
     @StateObject private var screenCapture = ScreenCapturePermission()
-    @AppStorage("adbscreen.localNetworkConfirmed") private var localNetworkConfirmed = false
+    @StateObject private var camera = CameraPermission()
     @Environment(\.dismissWindow) private var dismissWindow
 
     var body: some View {
@@ -32,22 +30,6 @@ struct OnboardingView: View {
                     }
 
                     OnboardingStep(
-                        done: localNetworkConfirmed,
-                        title: "Lokales Netzwerk erlauben",
-                        detail: "Für AirPlay fragt macOS beim ersten Verbindungsversuch eines iPhones/iPads nach Zugriff auf das lokale Netzwerk. Bestätige den Systemdialog mit „Erlauben“ und hake danach hier ab."
-                    ) {
-                        HStack {
-                            Button("Systemeinstellungen öffnen") {
-                                openSettings(pane: "Privacy_LocalNetwork")
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                            Toggle("Erledigt", isOn: $localNetworkConfirmed)
-                                .toggleStyle(.checkbox)
-                        }
-                    }
-
-                    OnboardingStep(
                         done: screenCapture.isGranted,
                         title: "Bildschirmaufnahme erlauben",
                         detail: "Für Screenshots und Aufnahmen eines gespiegelten Fensters benötigt ADBScreen die Berechtigung „Bildschirmaufnahme“."
@@ -63,6 +45,23 @@ struct OnboardingView: View {
                             .controlSize(.small)
                         }
                     }
+
+                    OnboardingStep(
+                        done: camera.isGranted,
+                        title: "Kamera erlauben",
+                        detail: "Nur nötig, wenn du ein iPhone/iPad per USB-Kabel spiegeln willst — ein verbundenes Gerät meldet sich dafür wie eine Kamera, genau wie bei QuickTime Players „Neue Filmaufnahme“."
+                    ) {
+                        HStack {
+                            Button("Erlauben") { camera.request() }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            Button("Systemeinstellungen öffnen") {
+                                openSettings(pane: "Privacy_Camera")
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        }
+                    }
                 }
                 .padding(20)
             }
@@ -71,9 +70,11 @@ struct OnboardingView: View {
         }
         .frame(width: 460, height: 460)
         .onAppear { screenCapture.refresh() }
+        .onAppear { camera.refresh() }
         .onDisappear { appState.showOnboarding = false }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             screenCapture.refresh()
+            camera.refresh()
         }
     }
 

@@ -1,10 +1,9 @@
 import CoreMedia
 
 /// Low-level CoreMedia/VideoToolbox plumbing shared by every H.264 mirror
-/// source (scrcpy's Android stream, the AirPlay/UxPlay receiver's iOS
-/// stream): building a format description from SPS/PPS, and wrapping an
-/// AVCC-framed access unit into a CMSampleBuffer ready for
-/// AVSampleBufferDisplayLayer.
+/// source (currently just scrcpy's Android stream): building a format
+/// description from SPS/PPS, and wrapping an AVCC-framed access unit into a
+/// CMSampleBuffer ready for AVSampleBufferDisplayLayer.
 ///
 /// Samples carry a real (host-time-derived) presentationTimeStamp rather
 /// than `.zero` — the `kCMSampleAttachmentKey_DisplayImmediately` flag set
