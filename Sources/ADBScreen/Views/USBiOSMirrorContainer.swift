@@ -4,12 +4,11 @@ import SwiftUI
 /// The USB-iOS tile in the mirror grid. The session is owned by AppState
 /// (not this view) so it keeps running while other tiles come and go.
 ///
-/// No recording button here (unlike the Android tile) — same reasoning as
-/// the AirPlay tile doesn't get one, just for a different underlying
-/// reason: recording would need to re-encode `AVCaptureVideoPreviewLayer`
-/// output ourselves, which isn't worth it for what's meant to be a simple
-/// AirPlay-restriction workaround. Screenshots reuse the same
-/// ScreenCaptureKit-based window snapshot as every other tile type.
+/// No recording button here (unlike the Android tile) — recording would
+/// need to re-encode `AVCaptureVideoPreviewLayer` output ourselves, which
+/// isn't worth it for what's meant to be a simple, network-independent
+/// mirroring path. Screenshots reuse the same ScreenCaptureKit-based window
+/// snapshot as every other tile type.
 struct USBiOSMirrorTile: View {
     @ObservedObject var session: USBiOSCaptureSession
     @ObservedObject var appState: AppState

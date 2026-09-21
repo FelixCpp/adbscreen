@@ -20,19 +20,18 @@ enum USBiOSCaptureError: Error, LocalizedError {
 }
 
 /// Captures video from one USB-connected external device via
-/// `AVCaptureSession` — no AirPlay, no network, so it keeps working on
-/// machines where AirPlay is blocked by policy. In practice this is almost
-/// always a USB HDMI capture dongle fed by a Lightning/USB-C → HDMI adapter
-/// cable from an iPhone/iPad — see `USBiOSDiscovery`'s doc comment for why
-/// a directly-connected iPhone/iPad (no adapter) no longer works on current
-/// macOS.
+/// `AVCaptureSession` — no network dependency at all, so it works on
+/// machines where network-based mirroring would be blocked by policy. In
+/// practice this is almost always a USB HDMI capture dongle fed by a
+/// Lightning/USB-C → HDMI adapter cable from an iPhone/iPad — see
+/// `USBiOSDiscovery`'s doc comment for why a directly-connected iPhone/iPad
+/// (no adapter) no longer works on current macOS.
 ///
-/// Unlike `AirPlayReceiverSession` (which decodes a raw H.264 elementary
-/// stream forwarded by a bundled helper process), `AVCaptureSession` itself
-/// already decodes the video, so display is just an `AVCaptureVideoPreviewLayer`
-/// bound to the session — no manual H.264/CoreMedia handling needed. There is
-/// also no back-channel here either: `AVCaptureSession` gives us video (and
-/// mic audio, unused) only, not touch/keyboard input.
+/// `AVCaptureSession` already decodes the video itself, so display is just
+/// an `AVCaptureVideoPreviewLayer` bound to the session — no manual
+/// H.264/CoreMedia handling needed. There is also no back-channel here:
+/// `AVCaptureSession` gives us video (and mic audio, unused) only, not
+/// touch/keyboard input.
 final class USBiOSCaptureSession: ObservableObject {
     let uniqueID: String
     let displayName: String

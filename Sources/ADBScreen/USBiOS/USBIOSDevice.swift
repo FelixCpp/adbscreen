@@ -13,7 +13,7 @@ struct USBIOSDevice: Identifiable, Hashable {
 }
 
 /// Finds USB-connected video sources usable for iOS screen mirroring,
-/// using only public `AVFoundation` API — no AirPlay, no network, and no
+/// using only public `AVFoundation` API — no network dependency, and no
 /// bundled helper process.
 ///
 /// Two distinct mechanisms are checked, because on a real machine

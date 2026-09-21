@@ -17,18 +17,12 @@ targets:
           - "Resources/**"
       - path: Sources/ADBScreen/Resources/scrcpy-server
         buildPhase: resources
-      - path: Sources/ADBScreen/Resources/adbscreen-airplay-helper
-        buildPhase: resources
       - path: Sources/ADBScreen/Resources/Assets.xcassets
         buildPhase: resources
     info:
       path: Sources/ADBScreen/Info.plist
       properties:
-        NSLocalNetworkUsageDescription: "ADBScreen wird zu einem AirPlay-Empfänger, damit dein iPhone/iPad den Bildschirm über das lokale Netzwerk spiegeln kann."
         NSCameraUsageDescription: "ADBScreen greift auf ein per USB verbundenes iPhone/iPad als Kamera-/Bildschirmquelle zu, um dessen Bildschirm zu spiegeln – dieselbe Technik wie QuickTime Players „Neue Filmaufnahme“."
-        NSBonjourServices:
-          - "_airplay._tcp"
-          - "_raop._tcp"
         LSApplicationCategoryType: public.app-category.developer-tools
         NSHighResolutionCapable: true
         CFBundleDisplayName: ADBScreen

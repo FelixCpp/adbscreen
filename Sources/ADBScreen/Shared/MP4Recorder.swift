@@ -47,7 +47,7 @@ final class MP4Recorder {
 
     /// Call from the session's own frame-processing thread, one at a time,
     /// in presentation order — matches how the display path already drives
-    /// this (see ScrcpySession/AirPlayReceiverSession).
+    /// this (see ScrcpySession).
     func append(_ sampleBuffer: CMSampleBuffer) {
         guard let writer, let input, writer.status == .writing else { return }
         if !sessionStarted {

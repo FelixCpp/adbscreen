@@ -10,15 +10,14 @@ final class AppState: ObservableObject {
     enum DeviceSelection: Hashable {
         case android(String)
         case simulated(String)
-        case airplay
         case usbIOS(String)
     }
 
     @Published var androidDevices: [AndroidDevice] = []
     /// iPhones/iPads currently reachable as a USB "muxed" capture device
-    /// (see `USBiOSDiscovery`) — a Cable-based alternative to the AirPlay
-    /// receiver above, which works even where AirPlay itself is blocked by
-    /// network/security policy.
+    /// (see `USBiOSDiscovery`) — either a directly-paired device (rare on
+    /// current macOS) or, in practice, a USB HDMI capture dongle fed by a
+    /// Lightning/USB-C → HDMI adapter cable.
     @Published private(set) var usbIOSDevices: [USBIOSDevice] = []
     @Published private(set) var simulatedDevices: [AndroidDevice] = AppState.demoDevices
     @Published private(set) var connectedOrder: [DeviceSelection] = []
@@ -60,26 +59,7 @@ final class AppState: ObservableObject {
     @Published private(set) var liveConnected: Set<DeviceSelection> = []
     private var liveConnectionCancellables: [DeviceSelection: AnyCancellable] = [:]
 
-    /// AirPlay mirroring has no ahead-of-time device discovery (it's a
-    /// receiver waiting for a connection, not a scanned device list), so
-    /// this is a fixed entry rather than a dynamic array like androidDevices.
-    let airplayServiceName = "ADBScreen"
-
-    /// The connected iPhone/iPad's device name (e.g. "iPhone 15"), mirrored
-    /// from the active AirPlayReceiverSession so the sidebar/tile can show
-    /// it without every view needing to observe the session object itself.
-    /// `nil` until a client actually connects and announces its name.
-    @Published private(set) var airplayDeviceName: String?
-    private var airplayDeviceNameCancellable: AnyCancellable?
-
-    /// What to show for the AirPlay entry: the actual connected device's
-    /// name once known, falling back to our own advertised service name
-    /// beforehand (e.g. while disconnected or still waiting for the
-    /// handshake to report it).
-    var airplayDisplayName: String { airplayDeviceName ?? airplayServiceName }
-
     private var scrcpySessions: [String: ScrcpySession] = [:]
-    private var airplaySession: AirPlayReceiverSession?
     private var usbIOSSessions: [String: USBiOSCaptureSession] = [:]
     private let powerAssertion = PowerAssertion()
 
@@ -171,7 +151,6 @@ final class AppState: ObservableObject {
         switch selection {
         case .android(let serial): return "android:\(serial)"
         case .simulated(let serial): return "simulated:\(serial)"
-        case .airplay: return "airplay"
         case .usbIOS(let uniqueID): return "usbios:\(uniqueID)"
         }
     }
@@ -182,9 +161,6 @@ final class AppState: ObservableObject {
         pollTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
             self?.refreshAndroid()
             self?.refreshUSBiOS()
-        }
-        if desiredKeys.contains(persistenceKey(for: .airplay)) {
-            connect(.airplay)
         }
     }
 
@@ -233,14 +209,6 @@ final class AppState: ObservableObject {
             session.start()
         case .simulated:
             liveConnected.insert(selection)
-        case .airplay:
-            let session = airplaySession ?? AirPlayReceiverSession(serviceName: airplayServiceName)
-            airplaySession = session
-            airplayDeviceNameCancellable = session.$deviceName
-                .receive(on: DispatchQueue.main)
-                .sink { [weak self] name in self?.airplayDeviceName = name }
-            subscribeLiveConnection(for: selection, publisher: session.$isConnected)
-            session.start()
         case .usbIOS(let uniqueID):
             guard let device = usbIOSDevices.first(where: { $0.uniqueID == uniqueID }) else { return }
             let session = usbIOSSessions[uniqueID] ?? USBiOSCaptureSession(uniqueID: uniqueID, displayName: device.name)
@@ -277,11 +245,6 @@ final class AppState: ObservableObject {
             scrcpySessions.removeValue(forKey: serial)
         case .simulated:
             break
-        case .airplay:
-            airplaySession?.stop()
-            airplaySession = nil
-            airplayDeviceNameCancellable = nil
-            airplayDeviceName = nil
         case .usbIOS(let uniqueID):
             usbIOSSessions[uniqueID]?.stop()
             usbIOSSessions.removeValue(forKey: uniqueID)
@@ -311,8 +274,8 @@ final class AppState: ObservableObject {
     }
 
     /// Tears down and restarts a device's session — useful when it's stuck
-    /// in an error state (e.g. a dropped scrcpy connection or a crashed
-    /// AirPlay helper) without having to click Trennen and Verbinden
+    /// in an error state (e.g. a dropped scrcpy connection or a wedged USB
+    /// capture session) without having to click Trennen and Verbinden
     /// separately.
     func reconnect(_ selection: DeviceSelection) {
         if isConnected(selection) {
@@ -348,10 +311,6 @@ final class AppState: ObservableObject {
 
     func simulatedDevice(for serial: String) -> AndroidDevice? {
         simulatedDevices.first(where: { $0.serial == serial })
-    }
-
-    var airplaySessionInstance: AirPlayReceiverSession? {
-        airplaySession
     }
 
     /// Re-checks for the adb binary (in case it was installed after this

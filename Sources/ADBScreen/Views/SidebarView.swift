@@ -65,20 +65,6 @@ struct SidebarView: View {
             }
 
             Section {
-                DeviceRow(
-                    title: appState.airplayDisplayName,
-                    subtitle: nil,
-                    icon: "iphone",
-                    tint: .blue,
-                    selection: .airplay,
-                    enabled: true,
-                    appState: appState
-                )
-            } header: {
-                Text("iOS (AirPlay)")
-            }
-
-            Section {
                 if appState.usbIOSDevices.isEmpty {
                     Text("Kein Gerät gefunden – direkte iPhone-USB-Erkennung funktioniert auf aktuellem macOS meist nicht mehr; empfohlen: Lightning/USB-C-zu-HDMI-Adapter + USB-HDMI-Capture-Dongle.")
                         .font(.system(size: 11))

@@ -35,17 +35,6 @@ struct MirrorTile: View {
                     onTitleBarDragEnded: onTitleBarDragEnded
                 )
             }
-        case .airplay:
-            if let session = appState.airplaySessionInstance {
-                AirPlayMirrorTile(
-                    session: session,
-                    appState: appState,
-                    isFocused: isFocused,
-                    onToggleFocus: toggleFocus,
-                    onTitleBarDragChanged: onTitleBarDragChanged,
-                    onTitleBarDragEnded: onTitleBarDragEnded
-                )
-            }
         case .usbIOS(let uniqueID):
             if let session = appState.usbIOSSession(for: uniqueID) {
                 USBiOSMirrorTile(
