@@ -1,5 +1,6 @@
-# Build output (see build.sh / run.sh)
+# Build output (see build.sh / run.sh / package.sh)
 /build/
+/dist/
 DerivedData/
 
 # Xcode
