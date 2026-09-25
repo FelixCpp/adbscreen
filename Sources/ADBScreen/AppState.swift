@@ -198,6 +198,11 @@ final class AppState: ObservableObject {
         focusedSelection = focusedSelection == selection ? nil : selection
     }
 
+    func isOnlyVisibleTile(_ selection: DeviceSelection) -> Bool {
+        if let focusedSelection { return focusedSelection == selection }
+        return connectedOrder == [selection]
+    }
+
     func connect(_ selection: DeviceSelection) {
         guard !connectedOrder.contains(selection) else { return }
         switch selection {

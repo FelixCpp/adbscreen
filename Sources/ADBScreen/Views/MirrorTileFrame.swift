@@ -31,6 +31,7 @@ struct MirrorTileFrame<Content: View>: View {
     /// keeps running in the background) without disconnecting anything.
     var isFocused: Bool = false
     var onToggleFocus: (() -> Void)? = nil
+    var fitVideoSize: CGSize? = nil
     var onTitleBarDragChanged: ((CGPoint, CGSize) -> Void)? = nil
     var onTitleBarDragEnded: (() -> Void)? = nil
     let onDisconnect: () -> Void
@@ -39,6 +40,13 @@ struct MirrorTileFrame<Content: View>: View {
     @State private var flashOpacity: Double = 0
     @State private var recordingPulse = false
     @State private var isExtrasPopoverPresented = false
+    @State private var videoAreaSize: CGSize = .zero
+    @State private var hostWindow: NSWindow?
+
+    private var canFitWindow: Bool {
+        guard let fitVideoSize else { return false }
+        return fitVideoSize.width > 0 && fitVideoSize.height > 0
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -90,6 +98,13 @@ struct MirrorTileFrame<Content: View>: View {
                 }
                 if isConnected, onToggleShowTouches != nil || onToggleStayAwake != nil || onToggleScreenPower != nil {
                     extrasMenu
+                }
+                if isConnected, canFitWindow {
+                    titleBarButton(
+                        systemName: "aspectratio",
+                        help: "Fenster an Seitenverhältnis des Geräts anpassen",
+                        action: fitWindowToVideo
+                    )
                 }
                 if isConnected, let onToggleFocus {
                     // Always the same glyph (never swaps to a "collapse"
@@ -218,7 +233,9 @@ struct MirrorTileFrame<Content: View>: View {
             }
             .animation(.easeInOut(duration: 0.35), value: isConnected)
             .animation(.easeInOut(duration: 0.25), value: isScreenOff)
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { videoAreaSize = $0 }
         }
+        .background(WindowReader { hostWindow = $0 })
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.white.opacity(0.12), lineWidth: 1))
         .shadow(color: .black.opacity(0.35), radius: 14, x: 0, y: 6)
@@ -228,6 +245,11 @@ struct MirrorTileFrame<Content: View>: View {
                 flashOpacity = 0
             }
         }
+    }
+
+    private func fitWindowToVideo() {
+        guard let fitVideoSize, let window = hostWindow ?? NSApp.keyWindow else { return }
+        WindowAspectFit.fit(window: window, currentArea: videoAreaSize, videoSize: fitVideoSize)
     }
 
     private var extrasMenu: some View {

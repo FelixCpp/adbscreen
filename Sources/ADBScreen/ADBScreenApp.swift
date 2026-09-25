@@ -9,6 +9,7 @@ struct ADBScreenApp: App {
         WindowGroup {
             ContentView(appState: appState)
         }
+        .defaultSize(width: 1100, height: 700)
         .windowResizability(.contentSize)
 
         // A plain window rather than a `.sheet` on the main window: macOS
