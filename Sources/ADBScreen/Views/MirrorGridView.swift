@@ -144,7 +144,7 @@ struct MirrorGridView: View {
         let spacing: CGFloat = 14
         let padding = tilePadding
         let columns = columnCount(for: itemCount)
-        let width = max((available.width - padding * 2 - spacing * CGFloat(columns - 1)) / CGFloat(columns), 300)
+        let width = max((available.width - padding * 2 - spacing * CGFloat(columns - 1)) / CGFloat(columns), 160)
 
         if itemCount <= 2 {
             return CGSize(width: width, height: max(available.height - padding * 2, 0))

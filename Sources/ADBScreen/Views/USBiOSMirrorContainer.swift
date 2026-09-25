@@ -35,6 +35,7 @@ struct USBiOSMirrorTile: View {
             screenshotTrigger: screenshotTrigger,
             isFocused: isFocused,
             onToggleFocus: onToggleFocus,
+            fitVideoSize: appState.isOnlyVisibleTile(.usbIOS(session.uniqueID)) ? session.videoSize : nil,
             onTitleBarDragChanged: onTitleBarDragChanged,
             onTitleBarDragEnded: onTitleBarDragEnded,
             onDisconnect: { appState.disconnect(.usbIOS(session.uniqueID)) }
