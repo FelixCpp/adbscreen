@@ -50,6 +50,7 @@ struct AndroidMirrorTile: View {
             screenshotTrigger: screenshotTrigger,
             isFocused: isFocused,
             onToggleFocus: onToggleFocus,
+            fitVideoSize: appState.isOnlyVisibleTile(.android(serial)) ? session.videoSize : nil,
             onTitleBarDragChanged: onTitleBarDragChanged,
             onTitleBarDragEnded: onTitleBarDragEnded,
             onDisconnect: { appState.disconnect(.android(serial)) }

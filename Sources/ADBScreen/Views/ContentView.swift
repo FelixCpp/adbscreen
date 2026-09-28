@@ -13,7 +13,7 @@ struct ContentView: View {
             MirrorGridView(appState: appState)
         }
         .navigationSplitViewStyle(.prominentDetail)
-        .frame(minWidth: 1100, minHeight: 700)
+        .frame(minWidth: 320, minHeight: 400)
         // `initial: true` also opens it once on first launch, replacing the
         // old `.sheet(isPresented:)` — see ADBScreenApp for why this is a
         // separate window rather than a sheet.
