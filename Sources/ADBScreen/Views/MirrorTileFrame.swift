@@ -99,12 +99,28 @@ struct MirrorTileFrame<Content: View>: View {
                 if isConnected, onToggleShowTouches != nil || onToggleStayAwake != nil || onToggleScreenPower != nil {
                     extrasMenu
                 }
-                if isConnected, canFitWindow {
+                if isConnected {
+                    // Always mounted and merely collapsed while unavailable:
+                    // it usually becomes available in the same transaction
+                    // that animates the tile to its fullscreen/only-tile
+                    // frame. A freshly inserted view gets its final local
+                    // position right away while the tile's own position is
+                    // still springing, so it visibly flew across the title
+                    // bar instead of moving along with its neighbors.
                     titleBarButton(
                         systemName: "aspectratio",
                         help: "Fenster an Seitenverhältnis des Geräts anpassen",
                         action: fitWindowToVideo
                     )
+                    .opacity(canFitWindow ? 1 : 0)
+                    .animation(nil, value: canFitWindow)
+                    .frame(width: canFitWindow ? nil : 0)
+                    .clipped()
+                    // Cancels the HStack spacing so the collapsed slot
+                    // leaves no gap between its neighbors.
+                    .padding(.leading, canFitWindow ? 0 : -10)
+                    .allowsHitTesting(canFitWindow)
+                    .accessibilityHidden(!canFitWindow)
                 }
                 if isConnected, let onToggleFocus {
                     // Always the same glyph (never swaps to a "collapse"
