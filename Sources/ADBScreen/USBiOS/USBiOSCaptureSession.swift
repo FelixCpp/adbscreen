@@ -47,6 +47,7 @@ final class USBiOSCaptureSession: ObservableObject {
     private var deviceInput: AVCaptureDeviceInput?
     private var formatObservation: NSKeyValueObservation?
     private var runtimeErrorObserver: NSObjectProtocol?
+    private var portFormatObservers: [NSObjectProtocol] = []
     private var stopped = false
 
     private static let registryLock = NSLock()
@@ -99,6 +100,8 @@ final class USBiOSCaptureSession: ObservableObject {
             NotificationCenter.default.removeObserver(runtimeErrorObserver)
         }
         runtimeErrorObserver = nil
+        portFormatObservers.forEach(NotificationCenter.default.removeObserver)
+        portFormatObservers = []
         formatObservation = nil
         let session = captureSession
         sessionQueue.async {
@@ -120,8 +123,9 @@ final class USBiOSCaptureSession: ObservableObject {
             return
         }
 
+        let input: AVCaptureDeviceInput
         do {
-            let input = try AVCaptureDeviceInput(device: device)
+            input = try AVCaptureDeviceInput(device: device)
             captureSession.beginConfiguration()
             if let existing = deviceInput {
                 captureSession.removeInput(existing)
@@ -139,7 +143,7 @@ final class USBiOSCaptureSession: ObservableObject {
             return
         }
 
-        observeFormat(of: device)
+        observeFormat(of: device, input: input)
         captureSession.startRunning()
 
         DispatchQueue.main.async { [weak self] in
@@ -150,18 +154,48 @@ final class USBiOSCaptureSession: ObservableObject {
         }
     }
 
-    /// `activeFormat` is KVO-observable and changes whenever the mirrored
-    /// screen's actual resolution becomes known/changes (e.g. rotation) —
-    /// there is no separate "did start" callback to hang this off instead.
-    private func observeFormat(of device: AVCaptureDevice) {
-        updateVideoSize(from: device.activeFormat)
+    /// Two sources, because neither covers every device:
+    /// - `activeFormat` (KVO) works for plain video devices like HDMI
+    ///   capture dongles.
+    /// - A directly connected iPhone/iPad is a `.muxed` device whose
+    ///   `activeFormat` always reports 0×0. Its real frame size only shows
+    ///   up on the input's video port once the stream is running (and
+    ///   changes again on rotation), announced via
+    ///   `formatDescriptionDidChangeNotification`.
+    private func observeFormat(of device: AVCaptureDevice, input: AVCaptureDeviceInput) {
+        updateVideoSize(from: device.activeFormat.formatDescription)
         formatObservation = device.observe(\.activeFormat, options: [.new]) { [weak self] device, _ in
-            self?.updateVideoSize(from: device.activeFormat)
+            self?.updateVideoSize(from: device.activeFormat.formatDescription)
+        }
+
+        let videoPorts = input.ports.filter { $0.mediaType == .video }
+        let observers = videoPorts.map { port in
+            NotificationCenter.default.addObserver(
+                forName: AVCaptureInput.Port.formatDescriptionDidChangeNotification,
+                object: port,
+                queue: nil
+            ) { [weak self] _ in
+                guard let formatDescription = port.formatDescription else { return }
+                self?.updateVideoSize(from: formatDescription)
+            }
+        }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, !self.stopped else {
+                observers.forEach(NotificationCenter.default.removeObserver)
+                return
+            }
+            self.portFormatObservers.forEach(NotificationCenter.default.removeObserver)
+            self.portFormatObservers = observers
+        }
+        for port in videoPorts {
+            if let formatDescription = port.formatDescription {
+                updateVideoSize(from: formatDescription)
+            }
         }
     }
 
-    private func updateVideoSize(from format: AVCaptureDevice.Format) {
-        let dimensions = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
+    private func updateVideoSize(from formatDescription: CMFormatDescription) {
+        let dimensions = CMVideoFormatDescriptionGetDimensions(formatDescription)
         let size = CGSize(width: Int(dimensions.width), height: Int(dimensions.height))
         guard size != .zero else { return }
         DispatchQueue.main.async { [weak self] in
